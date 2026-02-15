@@ -1,6 +1,7 @@
 package com.bugdigger.agent.server;
 
 import com.bugdigger.agent.collector.ClassCollector;
+import com.bugdigger.agent.hook.HookManager;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import org.slf4j.Logger;
@@ -19,12 +20,16 @@ public class AgentGrpcServer {
     
     private final int port;
     private final Server server;
+    private final HookManager hookManager;
     
     public AgentGrpcServer(int port, Instrumentation instrumentation, ClassCollector classCollector) {
         this.port = port;
         
+        // Create the hook manager for method instrumentation
+        this.hookManager = new HookManager(instrumentation);
+        
         // Create the service implementation
-        BytesightAgentService service = new BytesightAgentService(instrumentation, classCollector);
+        BytesightAgentService service = new BytesightAgentService(instrumentation, classCollector, hookManager);
         
         // Build the gRPC server
         this.server = ServerBuilder.forPort(port)
@@ -71,5 +76,9 @@ public class AgentGrpcServer {
     
     public boolean isRunning() {
         return server != null && !server.isShutdown();
+    }
+    
+    public HookManager getHookManager() {
+        return hookManager;
     }
 }

@@ -277,8 +277,15 @@ class TraceViewModel(
     }
 
     private fun MethodTraceEvent.toDisplay(): TraceEventDisplay {
+        // Create a unique ID by combining callId with eventType
+        // This ensures ENTRY and EXIT events with the same callId have different IDs
+        val uniqueId = if (callId.isEmpty()) {
+            UUID.randomUUID().toString()
+        } else {
+            "$callId-${eventType.name}"
+        }
         return TraceEventDisplay(
-            id = callId.ifEmpty { UUID.randomUUID().toString() },
+            id = uniqueId,
             timestamp = timestamp,
             threadName = threadName,
             className = className,

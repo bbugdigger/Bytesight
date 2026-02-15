@@ -2,6 +2,8 @@ package com.bugdigger.agent.server;
 
 import com.bugdigger.agent.collector.ClassCollector;
 import com.bugdigger.agent.collector.LoadedClassInfo;
+import com.bugdigger.agent.hook.HookManager;
+import com.bugdigger.agent.hook.TraceEventBuffer;
 import com.bugdigger.protocol.*;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
@@ -10,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Map;
 
@@ -24,11 +25,14 @@ public class BytesightAgentService extends BytesightAgentGrpc.BytesightAgentImpl
     
     private final Instrumentation instrumentation;
     private final ClassCollector classCollector;
+    private final HookManager hookManager;
     private final long startTime;
     
-    public BytesightAgentService(Instrumentation instrumentation, ClassCollector classCollector) {
+    public BytesightAgentService(Instrumentation instrumentation, ClassCollector classCollector,
+                                 HookManager hookManager) {
         this.instrumentation = instrumentation;
         this.classCollector = classCollector;
+        this.hookManager = hookManager;
         this.startTime = System.currentTimeMillis();
     }
     
@@ -140,13 +144,24 @@ public class BytesightAgentService extends BytesightAgentGrpc.BytesightAgentImpl
     public void addHook(AddHookRequest request, StreamObserver<HookResponse> responseObserver) {
         logger.info("addHook called for {}.{}", request.getClassName(), request.getMethodName());
         
-        // TODO: Implement hook management
-        HookResponse response = HookResponse.newBuilder()
-            .setSuccess(false)
-            .setError("Hook management not yet implemented")
-            .build();
+        HookManager.HookResult result = hookManager.addHook(
+                request.getId(),
+                request.getClassName(),
+                request.getMethodName(),
+                request.getMethodSignature().isEmpty() ? null : request.getMethodSignature(),
+                request.getHookType()
+        );
         
-        responseObserver.onNext(response);
+        HookResponse.Builder responseBuilder = HookResponse.newBuilder()
+                .setSuccess(result.isSuccess());
+        
+        if (result.isSuccess()) {
+            responseBuilder.setHookId(result.getHookId());
+        } else {
+            responseBuilder.setError(result.getError());
+        }
+        
+        responseObserver.onNext(responseBuilder.build());
         responseObserver.onCompleted();
     }
     
@@ -154,13 +169,18 @@ public class BytesightAgentService extends BytesightAgentGrpc.BytesightAgentImpl
     public void removeHook(RemoveHookRequest request, StreamObserver<HookResponse> responseObserver) {
         logger.info("removeHook called for id: {}", request.getHookId());
         
-        // TODO: Implement hook management
-        HookResponse response = HookResponse.newBuilder()
-            .setSuccess(false)
-            .setError("Hook management not yet implemented")
-            .build();
+        HookManager.HookResult result = hookManager.removeHook(request.getHookId());
         
-        responseObserver.onNext(response);
+        HookResponse.Builder responseBuilder = HookResponse.newBuilder()
+                .setSuccess(result.isSuccess());
+        
+        if (result.isSuccess()) {
+            responseBuilder.setHookId(result.getHookId());
+        } else {
+            responseBuilder.setError(result.getError());
+        }
+        
+        responseObserver.onNext(responseBuilder.build());
         responseObserver.onCompleted();
     }
     
@@ -168,8 +188,9 @@ public class BytesightAgentService extends BytesightAgentGrpc.BytesightAgentImpl
     public void listHooks(ListHooksRequest request, StreamObserver<ListHooksResponse> responseObserver) {
         logger.debug("listHooks called");
         
-        // TODO: Implement hook management
-        ListHooksResponse response = ListHooksResponse.newBuilder().build();
+        ListHooksResponse response = ListHooksResponse.newBuilder()
+                .addAllHooks(hookManager.listHooks())
+                .build();
         
         responseObserver.onNext(response);
         responseObserver.onCompleted();
@@ -177,13 +198,18 @@ public class BytesightAgentService extends BytesightAgentGrpc.BytesightAgentImpl
     
     @Override
     public void startTracing(StartTracingRequest request, StreamObserver<TracingResponse> responseObserver) {
-        logger.info("startTracing called for class filter: {}", request.getClassFilter());
+        logger.info("startTracing called for class filter: {}, method filter: {}", 
+                request.getClassFilter(), request.getMethodFilter());
         
-        // TODO: Implement tracing
+        // Generate a unique trace ID
+        String traceId = "trace-" + System.currentTimeMillis();
+        
+        // For now, tracing is activated by adding hooks - the TraceEventBuffer will
+        // broadcast events to all subscribers. Full pattern-based tracing can be added later.
         TracingResponse response = TracingResponse.newBuilder()
-            .setSuccess(false)
-            .setError("Tracing not yet implemented")
-            .build();
+                .setSuccess(true)
+                .setTraceId(traceId)
+                .build();
         
         responseObserver.onNext(response);
         responseObserver.onCompleted();
@@ -193,11 +219,11 @@ public class BytesightAgentService extends BytesightAgentGrpc.BytesightAgentImpl
     public void stopTracing(StopTracingRequest request, StreamObserver<TracingResponse> responseObserver) {
         logger.info("stopTracing called for id: {}", request.getTraceId());
         
-        // TODO: Implement tracing
+        // For now, stopping tracing doesn't do much - hooks need to be removed individually
         TracingResponse response = TracingResponse.newBuilder()
-            .setSuccess(false)
-            .setError("Tracing not yet implemented")
-            .build();
+                .setSuccess(true)
+                .setTraceId(request.getTraceId())
+                .build();
         
         responseObserver.onNext(response);
         responseObserver.onCompleted();
@@ -207,8 +233,28 @@ public class BytesightAgentService extends BytesightAgentGrpc.BytesightAgentImpl
     public void subscribeMethodTraces(SubscribeRequest request, StreamObserver<MethodTraceEvent> responseObserver) {
         logger.debug("subscribeMethodTraces called with filter: {}", request.getFilter());
         
-        // TODO: Implement tracing
-        // For now, just keep the stream open
+        String filter = request.getFilter();
+        
+        // Register listener with TraceEventBuffer to receive all trace events
+        Runnable unregister = TraceEventBuffer.getInstance().addListener(event -> {
+            // Apply filter if specified
+            if (!filter.isEmpty()) {
+                if (!event.getClassName().contains(filter) && !event.getMethodName().contains(filter)) {
+                    return;
+                }
+            }
+            
+            try {
+                responseObserver.onNext(event);
+            } catch (Exception e) {
+                logger.warn("Failed to send trace event: {}", e.getMessage());
+            }
+        });
+        
+        // Note: The stream stays open until the client disconnects.
+        // In a more robust implementation, we'd handle onCancel/onComplete from the client
+        // to properly unregister the listener.
+        logger.info("Trace event subscriber registered");
     }
     
     // ========== Helper Methods ==========

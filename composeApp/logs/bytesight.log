@@ -380,3 +380,223 @@ com.sun.tools.attach.AgentInitializationException: Agent JAR loaded but agent fa
 2026-02-15 13:32:58.035 [pool-7-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
 2026-02-15 13:32:58.036 [pool-7-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
 2026-02-15 13:32:58.036 [pool-7-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished reading class: com.bugdigger.sample.services.ProductService
+2026-02-15 16:07:57.043 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Attaching to JVM process: 137892 on port 50051
+2026-02-15 16:07:57.044 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Found agent JAR: C:/JetBrains/Internship/Bytesight/composeApp/../agent/build/libs/agent-1.0.0-agent.jar
+2026-02-15 16:07:59.403 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Agent successfully attached to 137892
+2026-02-15 16:07:59.724 [DefaultDispatcher-worker-3] INFO  c.b.bytesight.service.AgentClient - Connected to agent: version=1.0.0, target PID=137892
+2026-02-15 16:08:53.057 [DefaultDispatcher-worker-4] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loaded 3 plugins
+2026-02-15 16:08:53.087 [DefaultDispatcher-worker-4] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - JVM info: Eclipse Adoptium - 17.0.17 - 17.0.17+10
+2026-02-15 16:08:53.088 [DefaultDispatcher-worker-4] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Scanning classes from InMemorySource
+2026-02-15 16:08:53.089 [DefaultDispatcher-worker-4] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loading Class: com/bugdigger/sample/services/UserService from InMemorySource
+2026-02-15 16:08:53.095 [DefaultDispatcher-worker-4] WARN  c.b.c.d.VineflowerDecompiler$VineflowerLogger - Nested class com/bugdigger/sample/services/UserService$UserStats missing!
+2026-02-15 16:08:53.099 [pool-3-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Decompiling class: com.bugdigger.sample.services.UserService
+2026-02-15 16:08:53.194 [pool-3-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished decompiling class: com.bugdigger.sample.services.UserService
+2026-02-15 16:08:53.202 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Reading class: com.bugdigger.sample.services.UserService
+2026-02-15 16:08:53.211 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService
+2026-02-15 16:08:53.220 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_3_85
+2026-02-15 16:08:53.221 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:08:53.224 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_6_134
+2026-02-15 16:08:53.224 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:08:53.224 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_7_141
+2026-02-15 16:08:53.224 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:08:53.224 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_6_134
+2026-02-15 16:08:53.224 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:08:53.226 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_2_71
+2026-02-15 16:08:53.227 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:08:53.227 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_8_141
+2026-02-15 16:08:53.227 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:08:53.228 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_9_134
+2026-02-15 16:08:53.228 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:08:53.229 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:08:53.240 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished reading class: com.bugdigger.sample.services.UserService
+2026-02-15 16:19:17.175 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Attaching to JVM process: 115420 on port 50051
+2026-02-15 16:19:17.176 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Found agent JAR: C:/JetBrains/Internship/Bytesight/composeApp/../agent/build/libs/agent-1.0.0-agent.jar
+2026-02-15 16:19:20.361 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Agent successfully attached to 115420
+2026-02-15 16:19:20.701 [DefaultDispatcher-worker-3] INFO  c.b.bytesight.service.AgentClient - Connected to agent: version=1.0.0, target PID=115420
+2026-02-15 16:19:26.958 [DefaultDispatcher-worker-3] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loaded 3 plugins
+2026-02-15 16:19:26.995 [DefaultDispatcher-worker-3] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - JVM info: Eclipse Adoptium - 17.0.17 - 17.0.17+10
+2026-02-15 16:19:26.996 [DefaultDispatcher-worker-3] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Scanning classes from InMemorySource
+2026-02-15 16:19:26.997 [DefaultDispatcher-worker-3] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loading Class: com/bugdigger/sample/services/UserService from InMemorySource
+2026-02-15 16:19:27.006 [DefaultDispatcher-worker-3] WARN  c.b.c.d.VineflowerDecompiler$VineflowerLogger - Nested class com/bugdigger/sample/services/UserService$UserStats missing!
+2026-02-15 16:19:27.011 [pool-3-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Decompiling class: com.bugdigger.sample.services.UserService
+2026-02-15 16:19:27.110 [pool-3-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished decompiling class: com.bugdigger.sample.services.UserService
+2026-02-15 16:19:27.124 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Reading class: com.bugdigger.sample.services.UserService
+2026-02-15 16:19:27.139 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService
+2026-02-15 16:19:27.154 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_8_141
+2026-02-15 16:19:27.154 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:19:27.162 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_3_85
+2026-02-15 16:19:27.163 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:19:27.163 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_6_134
+2026-02-15 16:19:27.163 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:19:27.165 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_6_134
+2026-02-15 16:19:27.166 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:19:27.166 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_7_141
+2026-02-15 16:19:27.166 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:19:27.166 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_2_71
+2026-02-15 16:19:27.167 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:19:27.168 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_9_134
+2026-02-15 16:19:27.168 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:19:27.169 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:19:27.183 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished reading class: com.bugdigger.sample.services.UserService
+2026-02-15 16:26:03.617 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Attaching to JVM process: 45876 on port 50051
+2026-02-15 16:26:03.618 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Found agent JAR: C:/JetBrains/Internship/Bytesight/composeApp/../agent/build/libs/agent-1.0.0-agent.jar
+2026-02-15 16:26:05.854 [DefaultDispatcher-worker-1] ERROR c.b.bytesight.service.AttachService - Failed to attach agent to 45876
+com.sun.tools.attach.AgentInitializationException: Agent JAR loaded but agent failed to initialize
+	at jdk.attach/sun.tools.attach.HotSpotVirtualMachine.loadAgent(HotSpotVirtualMachine.java:166)
+	at com.bugdigger.bytesight.service.AttachService$attachAgent$2.invokeSuspend(AttachService.kt:62)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.internal.LimitedDispatcher$Worker.run(LimitedDispatcher.kt:124)
+	at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:586)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:820)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:717)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+2026-02-15 16:26:21.211 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Attaching to JVM process: 45876 on port 50051
+2026-02-15 16:26:21.211 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Found agent JAR: C:/JetBrains/Internship/Bytesight/composeApp/../agent/build/libs/agent-1.0.0-agent.jar
+2026-02-15 16:26:22.935 [DefaultDispatcher-worker-1] ERROR c.b.bytesight.service.AttachService - Failed to attach agent to 45876
+com.sun.tools.attach.AgentInitializationException: Agent JAR loaded but agent failed to initialize
+	at jdk.attach/sun.tools.attach.HotSpotVirtualMachine.loadAgent(HotSpotVirtualMachine.java:166)
+	at com.bugdigger.bytesight.service.AttachService$attachAgent$2.invokeSuspend(AttachService.kt:62)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.internal.LimitedDispatcher$Worker.run(LimitedDispatcher.kt:124)
+	at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:586)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:820)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:717)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+2026-02-15 16:28:00.016 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Attaching to JVM process: 72088 on port 50051
+2026-02-15 16:28:00.018 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Found agent JAR: C:/JetBrains/Internship/Bytesight/composeApp/../agent/build/libs/agent-1.0.0-agent.jar
+2026-02-15 16:28:02.319 [DefaultDispatcher-worker-1] ERROR c.b.bytesight.service.AttachService - Failed to attach agent to 72088
+com.sun.tools.attach.AgentInitializationException: Agent JAR loaded but agent failed to initialize
+	at jdk.attach/sun.tools.attach.HotSpotVirtualMachine.loadAgent(HotSpotVirtualMachine.java:166)
+	at com.bugdigger.bytesight.service.AttachService$attachAgent$2.invokeSuspend(AttachService.kt:62)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.internal.LimitedDispatcher$Worker.run(LimitedDispatcher.kt:124)
+	at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:586)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:820)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:717)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+2026-02-15 16:28:17.515 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Attaching to JVM process: 115420 on port 50051
+2026-02-15 16:28:17.516 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Found agent JAR: C:/JetBrains/Internship/Bytesight/composeApp/../agent/build/libs/agent-1.0.0-agent.jar
+2026-02-15 16:28:17.530 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Agent successfully attached to 115420
+2026-02-15 16:28:17.774 [DefaultDispatcher-worker-3] INFO  c.b.bytesight.service.AgentClient - Connected to agent: version=1.0.0, target PID=115420
+2026-02-15 16:29:27.488 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Attaching to JVM process: 70512 on port 50051
+2026-02-15 16:29:27.489 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Found agent JAR: C:/JetBrains/Internship/Bytesight/composeApp/../agent/build/libs/agent-1.0.0-agent.jar
+2026-02-15 16:29:29.832 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Agent successfully attached to 70512
+2026-02-15 16:29:30.150 [DefaultDispatcher-worker-3] INFO  c.b.bytesight.service.AgentClient - Connected to agent: version=1.0.0, target PID=70512
+2026-02-15 16:29:44.412 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loaded 3 plugins
+2026-02-15 16:29:44.447 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - JVM info: Eclipse Adoptium - 17.0.17 - 17.0.17+10
+2026-02-15 16:29:44.448 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Scanning classes from InMemorySource
+2026-02-15 16:29:44.449 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loading Class: com/bugdigger/sample/services/UserService from InMemorySource
+2026-02-15 16:29:44.458 [DefaultDispatcher-worker-1] WARN  c.b.c.d.VineflowerDecompiler$VineflowerLogger - Nested class com/bugdigger/sample/services/UserService$UserStats missing!
+2026-02-15 16:29:44.464 [pool-3-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Decompiling class: com.bugdigger.sample.services.UserService
+2026-02-15 16:29:44.558 [pool-3-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished decompiling class: com.bugdigger.sample.services.UserService
+2026-02-15 16:29:44.571 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Reading class: com.bugdigger.sample.services.UserService
+2026-02-15 16:29:44.584 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService
+2026-02-15 16:29:44.603 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_6_134
+2026-02-15 16:29:44.603 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:29:44.604 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_2_71
+2026-02-15 16:29:44.605 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:29:44.606 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_3_85
+2026-02-15 16:29:44.606 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:29:44.607 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_6_134
+2026-02-15 16:29:44.607 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:29:44.607 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_7_141
+2026-02-15 16:29:44.607 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:29:44.610 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_9_134
+2026-02-15 16:29:44.610 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:29:44.610 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_8_141
+2026-02-15 16:29:44.610 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:29:44.611 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:29:44.625 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished reading class: com.bugdigger.sample.services.UserService
+2026-02-15 16:37:36.831 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Attaching to JVM process: 77200 on port 50051
+2026-02-15 16:37:36.832 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Found agent JAR: C:/JetBrains/Internship/Bytesight/composeApp/../agent/build/libs/agent-1.0.0-agent.jar
+2026-02-15 16:37:39.006 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Agent successfully attached to 77200
+2026-02-15 16:37:39.326 [DefaultDispatcher-worker-3] INFO  c.b.bytesight.service.AgentClient - Connected to agent: version=1.0.0, target PID=77200
+2026-02-15 16:37:44.617 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loaded 3 plugins
+2026-02-15 16:37:44.653 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - JVM info: Eclipse Adoptium - 17.0.17 - 17.0.17+10
+2026-02-15 16:37:44.654 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Scanning classes from InMemorySource
+2026-02-15 16:37:44.655 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loading Class: com/bugdigger/sample/services/UserService from InMemorySource
+2026-02-15 16:37:44.663 [DefaultDispatcher-worker-1] WARN  c.b.c.d.VineflowerDecompiler$VineflowerLogger - Nested class com/bugdigger/sample/services/UserService$UserStats missing!
+2026-02-15 16:37:44.669 [pool-3-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Decompiling class: com.bugdigger.sample.services.UserService
+2026-02-15 16:37:44.770 [pool-3-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished decompiling class: com.bugdigger.sample.services.UserService
+2026-02-15 16:37:44.777 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Reading class: com.bugdigger.sample.services.UserService
+2026-02-15 16:37:44.784 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService
+2026-02-15 16:37:44.790 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_8_141
+2026-02-15 16:37:44.791 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:37:44.793 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_2_71
+2026-02-15 16:37:44.794 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:37:44.794 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_3_85
+2026-02-15 16:37:44.794 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:37:44.795 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_6_134
+2026-02-15 16:37:44.795 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:37:44.795 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_7_141
+2026-02-15 16:37:44.795 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:37:44.797 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_6_134
+2026-02-15 16:37:44.797 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:37:44.800 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_9_134
+2026-02-15 16:37:44.800 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:37:44.800 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:37:44.809 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished reading class: com.bugdigger.sample.services.UserService
+2026-02-15 16:48:00.388 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Attaching to JVM process: 124944 on port 50051
+2026-02-15 16:48:00.391 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Found agent JAR: C:/JetBrains/Internship/Bytesight/composeApp/../agent/build/libs/agent-1.0.0-agent.jar
+2026-02-15 16:48:02.595 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Agent successfully attached to 124944
+2026-02-15 16:48:02.941 [DefaultDispatcher-worker-3] INFO  c.b.bytesight.service.AgentClient - Connected to agent: version=1.0.0, target PID=124944
+2026-02-15 16:48:15.054 [DefaultDispatcher-worker-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loaded 3 plugins
+2026-02-15 16:48:15.094 [DefaultDispatcher-worker-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - JVM info: Eclipse Adoptium - 17.0.17 - 17.0.17+10
+2026-02-15 16:48:15.095 [DefaultDispatcher-worker-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Scanning classes from InMemorySource
+2026-02-15 16:48:15.096 [DefaultDispatcher-worker-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loading Class: com/bugdigger/sample/services/UserService from InMemorySource
+2026-02-15 16:48:15.104 [DefaultDispatcher-worker-2] WARN  c.b.c.d.VineflowerDecompiler$VineflowerLogger - Nested class com/bugdigger/sample/services/UserService$UserStats missing!
+2026-02-15 16:48:15.112 [pool-3-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Decompiling class: com.bugdigger.sample.services.UserService
+2026-02-15 16:48:15.200 [pool-3-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished decompiling class: com.bugdigger.sample.services.UserService
+2026-02-15 16:48:15.208 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Reading class: com.bugdigger.sample.services.UserService
+2026-02-15 16:48:15.216 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService
+2026-02-15 16:48:15.225 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_3_85
+2026-02-15 16:48:15.227 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:48:15.227 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_6_134
+2026-02-15 16:48:15.228 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:48:15.229 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_2_71
+2026-02-15 16:48:15.229 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:48:15.232 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_6_134
+2026-02-15 16:48:15.232 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:48:15.232 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_7_141
+2026-02-15 16:48:15.232 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:48:15.233 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_8_141
+2026-02-15 16:48:15.233 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:48:15.233 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_9_134
+2026-02-15 16:48:15.234 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:48:15.235 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:48:15.247 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished reading class: com.bugdigger.sample.services.UserService
+2026-02-15 16:55:00.808 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Attaching to JVM process: 71140 on port 50051
+2026-02-15 16:55:00.810 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Found agent JAR: C:/JetBrains/Internship/Bytesight/composeApp/../agent/build/libs/agent-1.0.0-agent.jar
+2026-02-15 16:55:02.981 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Agent successfully attached to 71140
+2026-02-15 16:55:03.301 [DefaultDispatcher-worker-3] INFO  c.b.bytesight.service.AgentClient - Connected to agent: version=1.0.0, target PID=71140
+2026-02-15 16:55:28.051 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loaded 3 plugins
+2026-02-15 16:55:28.087 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - JVM info: Eclipse Adoptium - 17.0.17 - 17.0.17+10
+2026-02-15 16:55:28.088 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Scanning classes from InMemorySource
+2026-02-15 16:55:28.090 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loading Class: com/bugdigger/sample/services/UserService from InMemorySource
+2026-02-15 16:55:28.099 [DefaultDispatcher-worker-1] WARN  c.b.c.d.VineflowerDecompiler$VineflowerLogger - Nested class com/bugdigger/sample/services/UserService$UserStats missing!
+2026-02-15 16:55:28.103 [pool-3-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Decompiling class: com.bugdigger.sample.services.UserService
+2026-02-15 16:55:28.188 [pool-3-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished decompiling class: com.bugdigger.sample.services.UserService
+2026-02-15 16:55:28.198 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Reading class: com.bugdigger.sample.services.UserService
+2026-02-15 16:55:28.209 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService
+2026-02-15 16:55:28.224 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_3_85
+2026-02-15 16:55:28.224 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:55:28.225 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_6_134
+2026-02-15 16:55:28.225 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:55:28.225 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_7_141
+2026-02-15 16:55:28.225 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:55:28.226 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_2_71
+2026-02-15 16:55:28.226 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:55:28.226 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_6_134
+2026-02-15 16:55:28.227 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:55:28.228 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_8_141
+2026-02-15 16:55:28.228 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:55:28.229 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_9_134
+2026-02-15 16:55:28.229 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:55:28.229 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-02-15 16:55:28.240 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished reading class: com.bugdigger.sample.services.UserService
