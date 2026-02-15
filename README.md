@@ -60,3 +60,12 @@ The ProGuard configuration applies aggressive obfuscation:
 - Method renaming: All methods are renamed
 - Optimization: 3 passes of optimization
 - Shrinking: Removes unused code
+
+Future steps:
+- JDBG
+- https://github.com/BaseMC/javgent
+- https://github.com/LXGaming/Reconstruct
+- https://github.com/christopherney/Enigma
+- https://github.com/open-obfuscator/dProtect
+- https://github.com/lamhoangx/proguard-deobfuscator
+- https://www.guardsquare.com/manual/tools/retrace
