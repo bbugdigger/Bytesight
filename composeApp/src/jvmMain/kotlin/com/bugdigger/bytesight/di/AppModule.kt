@@ -7,10 +7,10 @@ import com.bugdigger.bytesight.ui.browser.ClassBrowserViewModel
 import com.bugdigger.bytesight.ui.settings.SettingsViewModel
 import com.bugdigger.bytesight.ui.trace.TraceViewModel
 import com.bugdigger.core.decompiler.Decompiler
+import com.bugdigger.core.decompiler.DecompilerOptions
 import com.bugdigger.core.decompiler.VineflowerDecompiler
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
-import org.koin.dsl.bind
 import org.koin.dsl.module
 
 /**
@@ -21,8 +21,9 @@ val appModule = module {
     singleOf(::AttachService)
     singleOf(::AgentClient)
 
-    // Decompiler
-    singleOf(::VineflowerDecompiler) bind Decompiler::class
+    // Decompiler configuration
+    single { DecompilerOptions() }
+    single<Decompiler> { VineflowerDecompiler(get()) }
 
     // ViewModels
     factoryOf(::AttachViewModel)

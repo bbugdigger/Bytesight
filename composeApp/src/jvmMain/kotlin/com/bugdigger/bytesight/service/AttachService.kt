@@ -75,24 +75,47 @@ class AttachService {
      * Looks in common locations relative to the application.
      */
     private fun resolveAgentJarPath(): String {
-        // Check common locations for the agent JAR
-        val possiblePaths = listOf(
-            // Development: relative to project root
-            "../agent/build/libs/agent-all.jar",
-            "agent/build/libs/agent-all.jar",
-            // Production: bundled with application
-            "lib/agent.jar",
-            System.getProperty("bytesight.agent.path", ""),
+        // First, check system property
+        val systemPath = System.getProperty("bytesight.agent.path", "")
+        if (systemPath.isNotEmpty() && File(systemPath).exists()) {
+            return normalizePathForAttachApi(File(systemPath))
+        }
+
+        // Development: look in agent build directory for *-agent.jar
+        val devPaths = listOf(
+            "agent/build/libs",
+            "../agent/build/libs",
         )
 
-        for (path in possiblePaths) {
-            if (path.isNotEmpty() && File(path).exists()) {
-                return File(path).absolutePath
+        for (basePath in devPaths) {
+            val dir = File(basePath)
+            if (dir.exists() && dir.isDirectory) {
+                val agentJar = dir.listFiles()?.find { it.name.endsWith("-agent.jar") }
+                if (agentJar != null) {
+                    val normalizedPath = normalizePathForAttachApi(agentJar)
+                    logger.info("Found agent JAR: $normalizedPath")
+                    return normalizedPath
+                }
             }
         }
 
-        // Default fallback
-        return possiblePaths.first()
+        // Production: bundled with application
+        val prodPath = File("lib/agent.jar")
+        if (prodPath.exists()) {
+            return normalizePathForAttachApi(prodPath)
+        }
+
+        // Default fallback - return expected path for error message
+        return "agent/build/libs/agent-*-agent.jar"
+    }
+
+    /**
+     * Normalizes the file path for use with the JVM Attach API.
+     * On Windows, the Attach API may have issues with backslashes,
+     * so we convert to forward slashes for consistency.
+     */
+    private fun normalizePathForAttachApi(file: File): String {
+        return file.absolutePath.replace('\\', '/')
     }
 
     private fun isAttachable(descriptor: VirtualMachineDescriptor): Boolean {
