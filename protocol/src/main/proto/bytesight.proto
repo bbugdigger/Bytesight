@@ -1,0 +1,252 @@
+syntax = "proto3";
+
+package bytesight;
+
+option java_package = "com.bugdigger.protocol";
+option java_outer_classname = "BytesightProto";
+option java_multiple_files = true;
+
+// ============================================================================
+// Main Bytesight Agent Service
+// ============================================================================
+
+service BytesightAgent {
+    // Connection & Status
+    rpc GetAgentInfo(GetAgentInfoRequest) returns (AgentInfo);
+    rpc Ping(PingRequest) returns (PingResponse);
+
+    // Class Operations
+    rpc GetLoadedClasses(GetClassesRequest) returns (stream ClassInfo);
+    rpc GetClassBytecode(GetBytecodeRequest) returns (BytecodeResponse);
+    rpc SubscribeClassLoading(SubscribeRequest) returns (stream ClassLoadEvent);
+
+    // Hook Management
+    rpc AddHook(AddHookRequest) returns (HookResponse);
+    rpc RemoveHook(RemoveHookRequest) returns (HookResponse);
+    rpc ListHooks(ListHooksRequest) returns (ListHooksResponse);
+
+    // Method Tracing
+    rpc StartTracing(StartTracingRequest) returns (TracingResponse);
+    rpc StopTracing(StopTracingRequest) returns (TracingResponse);
+    rpc SubscribeMethodTraces(SubscribeRequest) returns (stream MethodTraceEvent);
+}
+
+// ============================================================================
+// Connection & Status Messages
+// ============================================================================
+
+message GetAgentInfoRequest {}
+
+message AgentInfo {
+    string agent_version = 1;
+    string target_jvm_version = 2;
+    string target_jvm_vendor = 3;
+    string target_main_class = 4;
+    int64 target_pid = 5;
+    int64 start_time = 6;
+    int32 grpc_port = 7;
+}
+
+message PingRequest {}
+
+message PingResponse {
+    int64 timestamp = 1;
+}
+
+// ============================================================================
+// Class Messages
+// ============================================================================
+
+message GetClassesRequest {
+    string package_filter = 1;      // Optional: filter by package prefix
+    bool include_system = 2;        // Include java.*, javax.*, sun.* classes
+}
+
+message ClassInfo {
+    string name = 1;                // Fully qualified name (e.g., "com.example.MyClass")
+    string package_name = 2;        // Package (e.g., "com.example")
+    string simple_name = 3;         // Simple name (e.g., "MyClass")
+    string superclass = 4;          // Superclass name
+    repeated string interfaces = 5; // Implemented interfaces
+    int32 modifiers = 6;            // Java modifiers (public, final, etc.)
+    bool is_interface = 7;
+    bool is_enum = 8;
+    bool is_annotation = 9;
+    bool is_synthetic = 10;
+    int64 loaded_at = 11;           // Timestamp when class was loaded
+    string class_loader = 12;       // Class loader name
+    repeated MethodInfo methods = 13;
+    repeated FieldInfo fields = 14;
+}
+
+message MethodInfo {
+    string name = 1;
+    string signature = 2;           // JVM signature (e.g., "(Ljava/lang/String;)V")
+    string return_type = 3;
+    repeated string parameter_types = 4;
+    int32 modifiers = 5;
+    bool is_synthetic = 6;
+    bool is_bridge = 7;
+}
+
+message FieldInfo {
+    string name = 1;
+    string type = 2;
+    int32 modifiers = 3;
+    bool is_synthetic = 4;
+}
+
+message GetBytecodeRequest {
+    string class_name = 1;          // Fully qualified class name
+}
+
+message BytecodeResponse {
+    string class_name = 1;
+    bytes bytecode = 2;             // Raw class file bytes
+    bool found = 3;
+    string error = 4;               // Error message if not found
+}
+
+message SubscribeRequest {
+    string filter = 1;              // Optional filter pattern
+}
+
+message ClassLoadEvent {
+    ClassInfo class_info = 1;
+    int64 timestamp = 2;
+    EventType event_type = 3;
+
+    enum EventType {
+        LOADED = 0;
+        TRANSFORMED = 1;
+        REDEFINED = 2;
+    }
+}
+
+// ============================================================================
+// Hook Messages
+// ============================================================================
+
+message AddHookRequest {
+    string id = 1;                  // Client-provided hook ID
+    string class_name = 2;          // Target class
+    string method_name = 3;         // Target method
+    string method_signature = 4;    // Optional: specific overload
+    HookType hook_type = 5;
+    HookConfig config = 6;
+}
+
+enum HookType {
+    LOG_ENTRY_EXIT = 0;             // Log method entry and exit
+    LOG_ARGUMENTS = 1;              // Log method arguments
+    LOG_RETURN_VALUE = 2;           // Log return value
+    MODIFY_RETURN = 3;              // Modify the return value
+    SKIP_EXECUTION = 4;             // Skip method execution entirely
+    CUSTOM = 5;                     // Custom hook logic
+}
+
+message HookConfig {
+    // For MODIFY_RETURN
+    string return_value = 1;        // JSON representation of return value
+
+    // For logging hooks
+    bool include_stack_trace = 2;
+    bool include_timestamp = 3;
+
+    // General
+    int32 max_depth = 4;            // Max object depth for logging
+}
+
+message HookResponse {
+    bool success = 1;
+    string hook_id = 2;
+    string error = 3;
+}
+
+message RemoveHookRequest {
+    string hook_id = 1;
+}
+
+message ListHooksRequest {}
+
+message ListHooksResponse {
+    repeated HookInfo hooks = 1;
+}
+
+message HookInfo {
+    string id = 1;
+    string class_name = 2;
+    string method_name = 3;
+    string method_signature = 4;
+    HookType hook_type = 5;
+    bool active = 6;
+    int64 hit_count = 7;
+    int64 created_at = 8;
+}
+
+// ============================================================================
+// Tracing Messages
+// ============================================================================
+
+message StartTracingRequest {
+    string class_filter = 1;        // Class name pattern to trace
+    string method_filter = 2;       // Method name pattern to trace
+    bool trace_arguments = 3;
+    bool trace_return_values = 4;
+    bool trace_exceptions = 5;
+    bool trace_timing = 6;
+}
+
+message StopTracingRequest {
+    string trace_id = 1;
+}
+
+message TracingResponse {
+    bool success = 1;
+    string trace_id = 2;
+    string error = 3;
+}
+
+message MethodTraceEvent {
+    string trace_id = 1;
+    int64 timestamp = 2;
+    int64 thread_id = 3;
+    string thread_name = 4;
+
+    string class_name = 5;
+    string method_name = 6;
+    string method_signature = 7;
+
+    TraceEventType event_type = 8;
+
+    // For ENTRY events
+    repeated ArgumentValue arguments = 9;
+
+    // For EXIT events
+    ArgumentValue return_value = 10;
+    int64 duration_nanos = 11;
+
+    // For EXCEPTION events
+    string exception_class = 12;
+    string exception_message = 13;
+    string stack_trace = 14;
+
+    // Call hierarchy
+    int32 depth = 15;               // Call stack depth
+    string parent_call_id = 16;     // Parent method call ID
+    string call_id = 17;            // Unique ID for this call
+
+    enum TraceEventType {
+        ENTRY = 0;
+        EXIT = 1;
+        EXCEPTION = 2;
+    }
+}
+
+message ArgumentValue {
+    string name = 1;                // Parameter name (if available)
+    string type = 2;                // Type name
+    string value = 3;               // String representation
+    bool is_null = 4;
+    bool truncated = 5;             // True if value was truncated
+}
