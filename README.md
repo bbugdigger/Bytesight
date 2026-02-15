@@ -69,3 +69,4 @@ Future steps:
 - https://github.com/open-obfuscator/dProtect
 - https://github.com/lamhoangx/proguard-deobfuscator
 - https://www.guardsquare.com/manual/tools/retrace
+- https://github.com/mirkosertic/MetaIR
