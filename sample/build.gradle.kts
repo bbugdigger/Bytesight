@@ -8,7 +8,7 @@ version = "0.1.0-SNAPSHOT"
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
+        languageVersion.set(JavaLanguageVersion.of(17))
     }
 }
 
@@ -28,6 +28,13 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+// Add Main-Class to standard jar
+tasks.jar {
+    manifest {
+        attributes["Main-Class"] = "com.bugdigger.sample.SampleApplication"
+    }
 }
 
 // Create a fat JAR for easy distribution

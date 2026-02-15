@@ -76,4 +76,10 @@ compose.desktop {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    
+    // Ensure agent and sample JARs are built before integration tests
+    dependsOn(":agent:agentJar", ":sample:jar")
+    
+    // Pass project root to tests
+    systemProperty("user.dir", rootProject.projectDir.absolutePath)
 }
