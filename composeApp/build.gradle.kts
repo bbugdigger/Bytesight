@@ -48,6 +48,8 @@ kotlin {
         }
         jvmTest.dependencies {
             implementation(libs.junit5.api)
+            implementation(libs.mockk)
+            implementation(libs.kotlinx.coroutines.test)
             runtimeOnly(libs.junit5.engine)
         }
     }
@@ -70,4 +72,8 @@ compose.desktop {
         // JVM args for the application
         jvmArgs("-Djdk.attach.allowAttachSelf=true")
     }
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
 }

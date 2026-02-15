@@ -1,9 +1,20 @@
 plugins {
     id("java")
+    id("application")
 }
 
 group = "com.bugdigger"
-version = "unspecified"
+version = "0.1.0-SNAPSHOT"
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
+}
+
+application {
+    mainClass.set("com.bugdigger.sample.SampleApplication")
+}
 
 repositories {
     mavenCentral()
@@ -17,4 +28,25 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+// Create a fat JAR for easy distribution
+tasks.register<Jar>("fatJar") {
+    group = "build"
+    description = "Creates a fat JAR with all dependencies"
+    archiveClassifier.set("all")
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    from(sourceSets.main.get().output)
+
+    dependsOn(configurations.runtimeClasspath)
+    from({
+        configurations.runtimeClasspath.get()
+            .filter { it.name.endsWith("jar") }
+            .map { zipTree(it) }
+    })
+
+    manifest {
+        attributes["Main-Class"] = "com.bugdigger.sample.SampleApplication"
+    }
 }

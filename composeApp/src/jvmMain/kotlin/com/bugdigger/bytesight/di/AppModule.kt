@@ -4,6 +4,8 @@ import com.bugdigger.bytesight.service.AgentClient
 import com.bugdigger.bytesight.service.AttachService
 import com.bugdigger.bytesight.ui.attach.AttachViewModel
 import com.bugdigger.bytesight.ui.browser.ClassBrowserViewModel
+import com.bugdigger.bytesight.ui.settings.SettingsViewModel
+import com.bugdigger.bytesight.ui.trace.TraceViewModel
 import com.bugdigger.core.decompiler.Decompiler
 import com.bugdigger.core.decompiler.VineflowerDecompiler
 import org.koin.core.module.dsl.factoryOf
@@ -25,4 +27,6 @@ val appModule = module {
     // ViewModels
     factoryOf(::AttachViewModel)
     factoryOf(::ClassBrowserViewModel)
+    factoryOf(::TraceViewModel)
+    factoryOf(::SettingsViewModel)
 }

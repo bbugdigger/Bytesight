@@ -1,13 +1,11 @@
 package com.bugdigger.bytesight
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.bugdigger.bytesight.ui.attach.AttachScreen
 import com.bugdigger.bytesight.ui.attach.AttachViewModel
 import com.bugdigger.bytesight.ui.browser.ClassBrowserScreen
@@ -15,7 +13,11 @@ import com.bugdigger.bytesight.ui.browser.ClassBrowserViewModel
 import com.bugdigger.bytesight.ui.navigation.NavigationState
 import com.bugdigger.bytesight.ui.navigation.Screen
 import com.bugdigger.bytesight.ui.navigation.Sidebar
+import com.bugdigger.bytesight.ui.settings.SettingsScreen
+import com.bugdigger.bytesight.ui.settings.SettingsViewModel
 import com.bugdigger.bytesight.ui.theme.BytesightTheme
+import com.bugdigger.bytesight.ui.trace.TraceScreen
+import com.bugdigger.bytesight.ui.trace.TraceViewModel
 import org.koin.compose.koinInject
 
 /**
@@ -96,47 +98,22 @@ private fun MainContent(
         }
 
         Screen.TRACE -> {
-            // TODO: Implement TraceScreen
-            PlaceholderScreen(
-                title = "Trace",
-                message = "Method tracing coming soon...",
-                modifier = modifier,
-            )
+            val connectionKey = navState.connectionKey
+            if (connectionKey != null) {
+                val viewModel: TraceViewModel = koinInject()
+                TraceScreen(
+                    viewModel = viewModel,
+                    connectionKey = connectionKey,
+                    modifier = modifier,
+                )
+            }
         }
 
         Screen.SETTINGS -> {
-            // TODO: Implement SettingsScreen
-            PlaceholderScreen(
-                title = "Settings",
-                message = "Settings coming soon...",
+            val viewModel: SettingsViewModel = koinInject()
+            SettingsScreen(
+                viewModel = viewModel,
                 modifier = modifier,
-            )
-        }
-    }
-}
-
-@Composable
-private fun PlaceholderScreen(
-    title: String,
-    message: String,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineMedium,
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
