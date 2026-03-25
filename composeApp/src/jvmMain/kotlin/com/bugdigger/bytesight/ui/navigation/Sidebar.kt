@@ -33,7 +33,8 @@ fun Sidebar(
         Screen.entries.forEach { screen ->
             val enabled = when (screen) {
                 Screen.ATTACH -> true
-                Screen.CLASS_BROWSER, Screen.TRACE -> isConnected
+                Screen.CLASS_BROWSER, Screen.TRACE,
+                Screen.HIERARCHY, Screen.INSPECTOR, Screen.STRINGS -> isConnected
                 Screen.SETTINGS -> true
             }
 

@@ -10,11 +10,17 @@ import com.bugdigger.bytesight.ui.attach.AttachScreen
 import com.bugdigger.bytesight.ui.attach.AttachViewModel
 import com.bugdigger.bytesight.ui.browser.ClassBrowserScreen
 import com.bugdigger.bytesight.ui.browser.ClassBrowserViewModel
+import com.bugdigger.bytesight.ui.hierarchy.HierarchyScreen
+import com.bugdigger.bytesight.ui.hierarchy.HierarchyViewModel
+import com.bugdigger.bytesight.ui.inspector.InspectorScreen
+import com.bugdigger.bytesight.ui.inspector.InspectorViewModel
 import com.bugdigger.bytesight.ui.navigation.NavigationState
 import com.bugdigger.bytesight.ui.navigation.Screen
 import com.bugdigger.bytesight.ui.navigation.Sidebar
 import com.bugdigger.bytesight.ui.settings.SettingsScreen
 import com.bugdigger.bytesight.ui.settings.SettingsViewModel
+import com.bugdigger.bytesight.ui.strings.StringsScreen
+import com.bugdigger.bytesight.ui.strings.StringsViewModel
 import com.bugdigger.bytesight.ui.theme.BytesightTheme
 import com.bugdigger.bytesight.ui.trace.TraceScreen
 import com.bugdigger.bytesight.ui.trace.TraceViewModel
@@ -90,6 +96,42 @@ private fun MainContent(
             if (connectionKey != null) {
                 val viewModel: ClassBrowserViewModel = koinInject()
                 ClassBrowserScreen(
+                    viewModel = viewModel,
+                    connectionKey = connectionKey,
+                    modifier = modifier,
+                )
+            }
+        }
+
+        Screen.HIERARCHY -> {
+            val connectionKey = navState.connectionKey
+            if (connectionKey != null) {
+                val viewModel: HierarchyViewModel = koinInject()
+                HierarchyScreen(
+                    viewModel = viewModel,
+                    connectionKey = connectionKey,
+                    modifier = modifier,
+                )
+            }
+        }
+
+        Screen.INSPECTOR -> {
+            val connectionKey = navState.connectionKey
+            if (connectionKey != null) {
+                val viewModel: InspectorViewModel = koinInject()
+                InspectorScreen(
+                    viewModel = viewModel,
+                    connectionKey = connectionKey,
+                    modifier = modifier,
+                )
+            }
+        }
+
+        Screen.STRINGS -> {
+            val connectionKey = navState.connectionKey
+            if (connectionKey != null) {
+                val viewModel: StringsViewModel = koinInject()
+                StringsScreen(
                     viewModel = viewModel,
                     connectionKey = connectionKey,
                     modifier = modifier,

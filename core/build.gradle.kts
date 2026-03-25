@@ -6,6 +6,10 @@ group = "com.bugdigger"
 version = "1.0.0"
 
 dependencies {
+    // Bytecode Analysis
+    implementation(libs.asm)
+    implementation(libs.asm.util)
+
     // Decompilation
     implementation(libs.vineflower)
 

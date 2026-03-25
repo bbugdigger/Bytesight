@@ -6,6 +6,9 @@ package com.bugdigger.bytesight.ui.navigation
 enum class Screen(val title: String, val icon: String) {
     ATTACH("Attach", "▶"),
     CLASS_BROWSER("Classes", "📦"),
+    HIERARCHY("Hierarchy", "🌳"),
+    INSPECTOR("Inspector", "🔍"),
+    STRINGS("Strings", "📝"),
     TRACE("Trace", "📊"),
     SETTINGS("Settings", "⚙"),
 }
