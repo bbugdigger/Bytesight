@@ -89,6 +89,10 @@ val obfuscateTask = tasks.register<JavaExec>("obfuscate") {
     mainClass.set("proguard.ProGuard")
     classpath = proguard
 
+    argumentProviders.add(CommandLineArgumentProvider {
+        listOf("@${configFile.get().asFile.absolutePath}")
+    })
+
     doFirst {
         obfuscatedDir.get().asFile.mkdirs()
 
@@ -144,9 +148,6 @@ val obfuscateTask = tasks.register<JavaExec>("obfuscate") {
         """.trimIndent()
 
         configFile.get().asFile.writeText(config)
-
-        // Set arguments for ProGuard
-        args("@${configFile.get().asFile.absolutePath}")
     }
 }
 

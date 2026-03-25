@@ -110,6 +110,7 @@ private fun TraceHeader(
             Text(
                 text = "Method Tracing",
                 style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = "Hook methods and trace their execution in real-time",
@@ -175,6 +176,7 @@ private fun HooksPanel(
                 Text(
                     text = "Hooks (${hooks.size})",
                     style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 IconButton(
                     onClick = onRefresh,
@@ -369,6 +371,7 @@ private fun HookItem(
                     fontFamily = FontFamily.Monospace,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -430,6 +433,7 @@ private fun TraceEventsPanel(
                     Text(
                         text = "Trace Events (${events.size})",
                         style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     if (isStreaming) {
                         Surface(
@@ -454,6 +458,7 @@ private fun TraceEventsPanel(
                     Text(
                         text = "Auto-scroll",
                         style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }
@@ -565,6 +570,7 @@ private fun TraceEventItem(
                 text = "${event.className.substringAfterLast('.')}.${event.methodName}",
                 style = MaterialTheme.typography.bodySmall,
                 fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurface,
             )
 
             // Arguments or return value

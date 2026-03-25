@@ -1,226 +1,173 @@
-# AGENTS.md - Bytesight Project Guidelines
+# AGENTS.md — Bytesight
 
-This document provides guidelines for AI coding agents working in this repository.
+Bytesight is a JVM reverse-engineering desktop application. It attaches a Java agent to
+a running JVM process, inspects loaded classes, decompiles bytecode (Vineflower), and
+traces method calls in real time via gRPC streaming.
 
-## Project Overview
+## Project layout
 
-Bytesight is a **Kotlin Multiplatform** project targeting Desktop (JVM) using **Compose Multiplatform**.
+| Module | Language | Purpose |
+|--------------|----------|--------------------------------------------------|
+| `composeApp` | Kotlin | Desktop UI — Compose Multiplatform, MVVM + Koin |
+| `agent` | Java | Java agent — ByteBuddy instrumentation, gRPC server |
+| `protocol` | Kotlin | gRPC/Protobuf definitions and generated stubs |
+| `core` | Kotlin | Decompiler wrapper (Vineflower) |
+| `sample` | Java | Sample target app for testing/instrumentation |
 
-### Project Structure
+All modules target **JVM 17**. Build system is **Gradle 8.14.3** with Kotlin DSL.
 
-```
-bytesight/
-├── composeApp/          # Main Compose Multiplatform application
-│   └── src/jvmMain/     # JVM-specific Kotlin code
-├── agent/               # Java module (JUnit 5 tests)
-├── protocol/            # Java module (JUnit 5 tests)
-├── sample/              # Java module (JUnit 5 tests)
-└── gradle/              # Gradle wrapper and version catalog
-```
+## Build commands
 
-### Tech Stack
-- **Kotlin**: 2.3.0 with official code style
-- **Compose Multiplatform**: 1.10.0
-- **Java**: For agent/protocol/sample modules
-- **Build System**: Gradle 8.x with Kotlin DSL
-- **Testing**: JUnit 5 (Java modules), kotlin-test (Kotlin modules)
-
----
-
-## JetBrains IDE MCP - MANDATORY for Project Files and Operations
-
-**NEVER use these tools:** `Grep`, `Glob`, `Read`, `Edit`, `Write`, `Task(Explore)`.  
-**ALWAYS use JetBrains MCP equivalents instead.**
-
-**Exception:** For paths outside the project (e.g., `~/.claude/`), use standard tools — MCP only works with project-relative paths.
-
-**NEVER use `execute_terminal_command` tool.**  
-**ALWAYS use default `Bash` instead.**
-
-Use other similar tools only if it is not possible to use the JetBrains IDE MCP, and you together with the user can't manage to make it work.
-
-### Why MCP over Standard Tools?
-
-**Synchronization with IDE:**
-- Standard tools work with the filesystem directly, MCP works with IDE's view of files
-- If a file is open in IDE with unsaved changes, standard `Read` sees the old disk version, while MCP sees current IDE buffer
-- Standard `Write`/`Edit` may conflict with IDE's buffer or not be picked up immediately
-- MCP changes integrate with IDE's undo history
-
-**IDE capabilities:**
-- `search_in_files_by_text` uses IntelliJ indexes — faster than grep on large codebases
-- `rename_refactoring` understands code structure and updates all references correctly
-- `get_symbol_info` provides type info, documentation, and declarations
-- `get_file_problems` runs IntelliJ inspections beyond syntax checking
-
-### MCP Server Configuration
-
-The JetBrains IDE MCP server can be called as `jetbrains`, `idea`, `my-idea`, `my-idea-dev`, etc.
-If there are many options for the JetBrains IDE MCP server, ask the user what MCP server to use.
-
-### Tool Mapping
-
-| Instead of      | Use JetBrains MCP                                     |
-|-----------------|-------------------------------------------------------|
-| `Read`          | `get_file_text_by_path`                               |
-| `Edit`, `Write` | `replace_text_in_file`, `create_new_file`             |
-| `Grep`          | `search_in_files_by_text`, `search_in_files_by_regex` |
-| `Glob`          | `find_files_by_name_keyword`, `find_files_by_glob`    |
-| `Task(Explore)` | `list_directory_tree`, `search_in_files_by_text`      |
-
-### Additional MCP Tools
-
-- **Code analysis**: `get_symbol_info`, `get_file_problems` for understanding code
-- **Refactoring**: `rename_refactoring` for symbol renaming (safer than text replacement)
-- **Run configs**: `get_run_configurations()` to discover, `execute_run_configuration(name="...")` to run
-
-### MANDATORY - Verify After Writing Code
-
-Use JetBrains MCP `get_file_problems` with `errorsOnly=false` to check files for warnings. FIX any warnings related to the code changes made. You may ignore unrelated warnings.
-
----
-
-## Build/Lint/Test Commands
-
-### Build Commands
 ```bash
-# Build entire project
+# Build everything (includes agent fat JAR)
 ./gradlew build
 
-# Build specific module
-./gradlew :composeApp:build
-./gradlew :agent:build
-./gradlew :protocol:build
-
-# Clean build
-./gradlew clean build
-```
-
-### Run Commands
-```bash
 # Run the desktop application
 ./gradlew :composeApp:run
 
-# Or use IDE run configuration: "composeApp [jvm]"
+# Build the agent fat JAR only
+./gradlew :agent:agentJar
+
+# Build the sample app (normal / obfuscated)
+./gradlew :sample:jar
+./gradlew :sample:obfuscate
 ```
 
-### Test Commands
+On Windows use `.\gradlew.bat` instead of `./gradlew`.
+
+## Test commands
+
 ```bash
-# Run all tests
+# Run ALL tests across every module
 ./gradlew test
 
-# Run tests for specific module
-./gradlew :composeApp:jvmTest
+# Run tests for a single module
 ./gradlew :agent:test
-./gradlew :protocol:test
-./gradlew :sample:test
+./gradlew :composeApp:test
+./gradlew :core:test
 
-# Run a single test class (JUnit 5 - Java modules)
-./gradlew :agent:test --tests "com.bugdigger.MyTestClass"
+# Run a single test class
+./gradlew :agent:test --tests "com.bugdigger.agent.hook.TraceEventBufferTest"
+./gradlew :composeApp:jvmTest --tests "com.bugdigger.bytesight.ui.trace.TraceViewModelTest"
+./gradlew :core:test --tests "com.bugdigger.core.decompiler.VineflowerDecompilerTest"
 
-# Run a single test method
-./gradlew :agent:test --tests "com.bugdigger.MyTestClass.testMethodName"
+# Run a single test method (Kotlin backtick names need quoting)
+./gradlew :composeApp:jvmTest --tests "com.bugdigger.bytesight.ui.trace.TraceViewModelTest.Initial State.should have empty initial state"
 
-# Run tests with pattern matching
-./gradlew :agent:test --tests "*MyTest*"
+# Run a single test method (Java camelCase names)
+./gradlew :agent:test --tests "com.bugdigger.agent.hook.TraceEventBufferTest.addListener_receivesEvents"
 ```
 
-### Lint/Check Commands
-```bash
-# Check project compilation
-./gradlew check
+Note: `composeApp` uses the `jvmTest` task (Kotlin Multiplatform), while `agent`, `core`,
+and `sample` use the standard `test` task.
 
-# Verify Gradle configuration
-./gradlew --dry-run build
-```
+Integration tests in `composeApp` are gated by `@EnabledIf("isIntegrationTestEnabled")` and
+require the agent JAR + sample JAR to be pre-built (both are wired as task dependencies).
 
----
+## Lint / format
 
-## Code Style Guidelines
+There is no dedicated linter or formatter configured (no ESLint, Prettier, Checkstyle,
+ktlint, or Detekt). The project follows **Kotlin official code style**
+(`kotlin.code.style=official` in `gradle.properties`). Use your IDE's default Kotlin/Java
+formatter.
 
-### Kotlin Code Style
+## Code style guidelines
 
-This project uses **official Kotlin code style** (`kotlin.code.style=official` in gradle.properties).
+### Naming conventions
 
-**Formatting:**
-- 4-space indentation (no tabs)
-- Opening braces on same line
-- Trailing commas in multiline constructs
+| Element | Convention | Example |
+|----------------------|----------------------|-----------------------------------------|
+| Packages | lowercase dotted | `com.bugdigger.agent.hook` |
+| Classes / Interfaces | PascalCase | `TraceViewModel`, `AgentClient` |
+| Functions / methods | camelCase | `refreshClasses`, `addHook` |
+| Constants | UPPER_SNAKE_CASE | `DEFAULT_PORT`, `AGENT_VERSION` |
+| Variables / props | camelCase | `connectionKey`, `uiState` |
+| Enum values | UPPER_SNAKE_CASE | `LOG_ENTRY_EXIT`, `ENTRY` |
+| Files | PascalCase (match class) | `TraceViewModel.kt`, `HookManager.java` |
+| Test classes | `ClassNameTest` suffix | `TraceViewModelTest`, `HookResultTest` |
+| Kotlin test methods | Backtick descriptive | `` `should have empty initial state` `` |
+| Java test methods | snake_case descriptive | `success_createsSuccessfulResult` |
 
-**Imports:**
-- Group imports: standard library, third-party, project imports
-- Wildcard imports allowed for common packages (e.g., `androidx.compose.runtime.*`)
-- Sort imports alphabetically within groups
+### Imports
 
-**Naming Conventions:**
-- Classes/Interfaces: `PascalCase` (e.g., `Greeting`, `JVMPlatform`)
-- Functions/Properties: `camelCase` (e.g., `greet()`, `getPlatform()`)
-- Constants: `SCREAMING_SNAKE_CASE` or `camelCase` for top-level vals
-- Packages: lowercase, dot-separated (e.g., `com.bugdigger.bytesight`)
-- Files: Match primary class name (e.g., `Greeting.kt` for `class Greeting`)
+- Prefer **named imports**; avoid wildcards except for Compose UI packages
+  (`androidx.compose.runtime.*`, `androidx.compose.foundation.layout.*`).
+- Use static imports for JUnit assertions in Java: `import static org.junit.jupiter.api.Assertions.*`.
+- Order: stdlib/JDK → third-party libs → project modules. No path aliases.
 
-**Types:**
-- Prefer explicit types for public API, inferred types for local variables
-- Use nullable types (`Type?`) explicitly; avoid `!!` operator
-- Prefer `val` over `var` when possible
+### Types
 
-### Java Code Style
+- **Kotlin**: Use `data class` for state/DTOs, `sealed class` for discriminated unions,
+  `interface` for abstractions, `enum class` for fixed sets.
+- Explicit types on public API (function signatures, public properties); inferred types for
+  local variables.
+- Use `StateFlow<T>` / `MutableStateFlow<T>` for reactive UI state.
+- Nullable types used judiciously (`String?`, `ClassInfo?`) — avoid unnecessary nullability.
+- **Java**: Standard classes for models; prefer inner `static class` for implementation details.
+  Use `ConcurrentHashMap`, `CopyOnWriteArrayList`, `AtomicLong` for thread safety.
 
-**Formatting:**
-- 4-space indentation
-- Opening braces on same line
-- One class per file
+### Error handling
 
-**Naming Conventions:**
-- Classes: `PascalCase`
-- Methods/Variables: `camelCase`
-- Constants: `SCREAMING_SNAKE_CASE`
-- Packages: lowercase (e.g., `com.bugdigger`)
+- **Kotlin**: Use `Result<T>` with `runCatching { }` + `.onSuccess` / `.onFailure` chaining.
+  Use `sealed class` results for domain-specific outcomes (e.g., `DecompilationResult.Success`,
+  `DecompilationResult.Failure`).
+- **Java**: Try-catch with SLF4J logging (`logger.error(...)`) and wrapping in
+  `RuntimeException` for fatal errors. Custom Result types via static factory methods
+  (`HookResult.success()`, `HookResult.failure()`).
+- **UI errors**: Store in `error: String?` field of UI state data classes, display via
+  `ErrorBanner` composable, clear via `clearError()`.
 
-### Compose-Specific Guidelines
+### Architecture patterns
 
-**Composable Functions:**
-- Name composables as nouns/noun phrases (`App`, `Greeting`, not `ShowApp`)
-- Annotate with `@Composable`
-- Use `@Preview` for preview functions
-- State hoisting: lift state up when possible
+- **MVVM** for Compose UI: `ViewModel` exposes `StateFlow<UiState>` consumed by
+  `@Composable` screens.
+- **Dependency injection**: Koin — `singleOf`, `factoryOf`,
+  `single<Interface> { Implementation() }` declared in `AppModule.kt`.
+- **Service layer**: `AgentClient` (gRPC client), `AttachService` (JVM Attach API).
+- **Agent**: Java Instrumentation API → `ClassFileTransformer` + ByteBuddy `Advice` for
+  method interception. Embedded gRPC server for communication with the desktop app.
 
-**Modifiers:**
-- Chain modifiers in order: layout → behavior → visual
-- Example: `.fillMaxSize().clickable().background()`
+### Comments and documentation
 
-### Error Handling
+- Use KDoc (`/** ... */`) on public classes, interfaces, and methods.
+- Use Javadoc with `@param`, `@return`, `@throws` tags in Java code.
+- Inline comments explain *why*, not *what*.
+- Use section dividers for long files: `// ========== Helper Methods ==========`.
 
-- Use Kotlin's `Result` type or sealed classes for error modeling
-- Avoid silent failures; log or propagate errors appropriately
-- In Compose, handle errors gracefully in UI state
+### Test patterns
 
-### File Organization
+- **JUnit 5** across all modules with `useJUnitPlatform()`.
+- **Kotlin tests**: MockK (`mockk(relaxed = true)`), `kotlinx-coroutines-test` (`runBlocking`).
+- **Java tests**: JUnit 5 assertions, `CountDownLatch` for async verification.
+- Group related tests with `@Nested` inner classes and `@DisplayName`.
+- Follow **Arrange-Act-Assert** pattern consistently.
+- Test file location mirrors source: `src/test/java/...` (agent, core) or
+  `src/jvmTest/kotlin/...` (composeApp).
 
-```
-src/
-├── jvmMain/kotlin/com/bugdigger/bytesight/
-│   ├── App.kt           # Main composable
-│   ├── main.kt          # Entry point
-│   ├── Platform.kt      # Platform abstractions
-│   └── [feature]/       # Feature-specific code
-└── jvmTest/kotlin/      # Tests mirror main structure
-```
+### Key dependencies
 
----
+| Dependency | Purpose |
+|-----------------------------|-----------------------------------------------|
+| Jetpack Compose Multiplatform | Desktop UI framework |
+| Koin | Dependency injection |
+| gRPC + Protobuf | Agent ↔ UI communication |
+| ByteBuddy | Runtime bytecode instrumentation |
+| Vineflower | Bytecode decompilation |
+| RSyntaxTextArea | Code editor component in UI |
+| SLF4J + Logback | Logging |
+| JUnit 5 + MockK | Testing |
 
-## Dependencies
+### Proto / gRPC
 
-Managed via Gradle Version Catalog (`gradle/libs.versions.toml`):
-- Reference libraries: `libs.compose.material3`
-- Reference plugins: `libs.plugins.kotlinMultiplatform`
+Protocol definitions live in `protocol/src/main/proto/bytesight.proto`. Code is generated
+by the Protobuf Gradle plugin into `protocol/build/generated/source/proto/`. Never edit
+generated files — modify the `.proto` file and rebuild.
 
-When adding dependencies, update the version catalog first, then reference in build.gradle.kts.
+### General rules
 
----
-
-## IDE Integration
-
-- **Hot Reload**: Compose Hot Reload plugin enabled for rapid UI development
-- **Run Configuration**: Use "composeApp [jvm]" for running the desktop app
-- After code changes, use `get_file_problems` to verify no new issues introduced
+- Target JVM 17 — do not use APIs from newer JDK versions.
+- Keep modules decoupled: UI depends on `protocol` and `core`, never on `agent`.
+- The `agent` module is pure Java (no Kotlin) to minimize the fat JAR size.
+- Prefer extension functions for display helpers (e.g., `MethodTraceEvent.toDisplay()`).
+- Use `private` for composables that are internal to a screen file.
+- Visibility: omit `public` (Kotlin default); use `internal` or `private` deliberately.

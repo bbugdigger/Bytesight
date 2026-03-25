@@ -4,7 +4,10 @@ import com.bugdigger.bytesight.service.AgentClient
 import com.bugdigger.bytesight.service.AttachService
 import com.bugdigger.bytesight.ui.attach.AttachViewModel
 import com.bugdigger.bytesight.ui.browser.ClassBrowserViewModel
+import com.bugdigger.bytesight.ui.hierarchy.HierarchyViewModel
+import com.bugdigger.bytesight.ui.inspector.InspectorViewModel
 import com.bugdigger.bytesight.ui.settings.SettingsViewModel
+import com.bugdigger.bytesight.ui.strings.StringsViewModel
 import com.bugdigger.bytesight.ui.trace.TraceViewModel
 import com.bugdigger.core.decompiler.Decompiler
 import com.bugdigger.core.decompiler.DecompilerOptions
@@ -28,6 +31,10 @@ val appModule = module {
     // ViewModels
     factoryOf(::AttachViewModel)
     factoryOf(::ClassBrowserViewModel)
+    factoryOf(::HierarchyViewModel)
+    factoryOf(::InspectorViewModel)
+    factoryOf(::StringsViewModel)
     factoryOf(::TraceViewModel)
     factoryOf(::SettingsViewModel)
 }
+

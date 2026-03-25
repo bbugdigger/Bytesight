@@ -163,6 +163,7 @@ private fun SettingsHeader(
             Text(
                 text = "Settings",
                 style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = "Configure Bytesight preferences",
@@ -193,6 +194,7 @@ private fun SettingsSection(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(modifier = Modifier.height(16.dp))
             content()
@@ -219,6 +221,7 @@ private fun SwitchSetting(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = description,
@@ -259,6 +262,7 @@ private fun SliderSetting(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     text = description,
@@ -332,6 +336,7 @@ private fun InfoRow(
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }
