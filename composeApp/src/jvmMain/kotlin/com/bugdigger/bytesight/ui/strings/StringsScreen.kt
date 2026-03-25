@@ -117,6 +117,7 @@ private fun StringsHeader(
             Text(
                 text = "String & Constant Extraction",
                 style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = "Extract hardcoded strings, numbers, and references from loaded classes",
@@ -238,10 +239,10 @@ private fun ConstantsTable(
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text("Value", style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(2f))
-                    Text("Type", style = MaterialTheme.typography.labelMedium, modifier = Modifier.width(80.dp))
-                    Text("Pattern", style = MaterialTheme.typography.labelMedium, modifier = Modifier.width(100.dp))
-                    Text("Location", style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1.5f))
+                    Text("Value", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(2f))
+                    Text("Type", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(80.dp))
+                    Text("Pattern", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(100.dp))
+                    Text("Location", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1.5f))
                 }
 
                 HorizontalDivider()

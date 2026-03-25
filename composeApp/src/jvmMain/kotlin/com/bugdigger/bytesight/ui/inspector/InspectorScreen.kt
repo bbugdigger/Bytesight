@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -99,6 +100,7 @@ private fun InspectorHeader(modifier: Modifier = Modifier) {
         Text(
             text = "Bytecode Inspector",
             style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onSurface,
         )
         Text(
             text = "Inspect raw JVM bytecode instructions alongside decompiled source",
@@ -108,6 +110,7 @@ private fun InspectorHeader(modifier: Modifier = Modifier) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SelectorRow(
     classes: List<com.bugdigger.protocol.ClassInfo>,
@@ -119,61 +122,109 @@ private fun SelectorRow(
     isLoading: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    var classDropdownExpanded by remember { mutableStateOf(false) }
-    var methodDropdownExpanded by remember { mutableStateOf(false) }
-    var classSearchQuery by remember { mutableStateOf("") }
+    var classExpanded by remember { mutableStateOf(false) }
+    var methodExpanded by remember { mutableStateOf(false) }
+    var classSearchText by remember { mutableStateOf("") }
+
+    // Sync the text field with the selected class name
+    LaunchedEffect(selectedClassName) {
+        classSearchText = selectedClassName ?: ""
+    }
 
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Class selector
-        Box(modifier = Modifier.weight(1f)) {
+        // Class selector with searchable dropdown
+        ExposedDropdownMenuBox(
+            expanded = classExpanded,
+            onExpandedChange = { classExpanded = it },
+            modifier = Modifier.weight(1f),
+        ) {
             OutlinedTextField(
-                value = selectedClassName ?: "",
-                onValueChange = { classSearchQuery = it },
-                placeholder = { Text("Select a class...") },
+                value = classSearchText,
+                onValueChange = { text ->
+                    classSearchText = text
+                    classExpanded = true
+                },
+                placeholder = { Text("Type to search classes...") },
                 label = { Text("Class") },
                 singleLine = true,
-                readOnly = false,
-                modifier = Modifier.fillMaxWidth().clickable { classDropdownExpanded = true },
+                trailingIcon = {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = classExpanded)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(MenuAnchorType.PrimaryEditable),
             )
-            DropdownMenu(
-                expanded = classDropdownExpanded,
-                onDismissRequest = { classDropdownExpanded = false },
+
+            val filteredClasses = remember(classSearchText, classes) {
+                if (classSearchText.isBlank() || classSearchText == selectedClassName) {
+                    classes.take(100)
+                } else {
+                    classes.filter {
+                        it.name.lowercase().contains(classSearchText.lowercase())
+                    }.take(100)
+                }
+            }
+
+            ExposedDropdownMenu(
+                expanded = classExpanded,
+                onDismissRequest = {
+                    classExpanded = false
+                    // Restore to selected if user didn't pick anything
+                    if (classSearchText != selectedClassName) {
+                        classSearchText = selectedClassName ?: ""
+                    }
+                },
                 modifier = Modifier.heightIn(max = 300.dp),
             ) {
-                val filtered = if (classSearchQuery.isBlank()) classes
-                else classes.filter { it.name.lowercase().contains(classSearchQuery.lowercase()) }
-
-                filtered.take(50).forEach { classInfo ->
+                if (filteredClasses.isEmpty()) {
                     DropdownMenuItem(
                         text = {
-                            Column {
-                                Text(
-                                    text = classInfo.name.substringAfterLast('.'),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
-                                Text(
-                                    text = classInfo.name.substringBeforeLast('.', ""),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
+                            Text(
+                                text = "No classes found",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         },
-                        onClick = {
-                            onSelectClass(classInfo.name)
-                            classDropdownExpanded = false
-                            classSearchQuery = ""
-                        },
+                        onClick = {},
+                        enabled = false,
                     )
+                } else {
+                    filteredClasses.forEach { classInfo ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(
+                                        text = classInfo.name.substringAfterLast('.'),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                    Text(
+                                        text = classInfo.name.substringBeforeLast('.', ""),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            },
+                            onClick = {
+                                classSearchText = classInfo.name
+                                onSelectClass(classInfo.name)
+                                classExpanded = false
+                            },
+                        )
+                    }
                 }
             }
         }
 
         // Method selector
-        Box(modifier = Modifier.weight(1f)) {
+        ExposedDropdownMenuBox(
+            expanded = methodExpanded,
+            onExpandedChange = { if (methods.isNotEmpty()) methodExpanded = it },
+            modifier = Modifier.weight(1f),
+        ) {
             OutlinedTextField(
                 value = selectedMethod?.let { "${it.name}${it.descriptor}" } ?: "",
                 onValueChange = {},
@@ -181,12 +232,18 @@ private fun SelectorRow(
                 label = { Text("Method") },
                 singleLine = true,
                 readOnly = true,
-                modifier = Modifier.fillMaxWidth().clickable { methodDropdownExpanded = true },
+                trailingIcon = {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = methodExpanded)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
                 enabled = methods.isNotEmpty(),
             )
-            DropdownMenu(
-                expanded = methodDropdownExpanded,
-                onDismissRequest = { methodDropdownExpanded = false },
+
+            ExposedDropdownMenu(
+                expanded = methodExpanded,
+                onDismissRequest = { methodExpanded = false },
                 modifier = Modifier.heightIn(max = 300.dp),
             ) {
                 methods.forEach { method ->
@@ -195,13 +252,14 @@ private fun SelectorRow(
                             Text(
                                 text = "${method.accessString} ${method.name}${method.descriptor}",
                                 style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
                         },
                         onClick = {
                             onSelectMethod(method.name, method.descriptor)
-                            methodDropdownExpanded = false
+                            methodExpanded = false
                         },
                     )
                 }
@@ -236,6 +294,7 @@ private fun BytecodePanel(
                 Text(
                     text = "Bytecode",
                     style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 if (method != null) {
                     Spacer(Modifier.width(8.dp))
@@ -257,7 +316,10 @@ private fun BytecodePanel(
                 }
                 method == null -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Select a class and method", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            text = "Select a class and method",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
                 else -> {
@@ -268,16 +330,16 @@ private fun BytecodePanel(
                             .background(MaterialTheme.colorScheme.surfaceVariant)
                             .padding(horizontal = 8.dp, vertical = 4.dp),
                     ) {
-                        Text("#", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(36.dp))
-                        Text("Line", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(40.dp))
-                        Text("Opcode", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(140.dp))
-                        Text("Operands", style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
+                        Text("#", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(36.dp))
+                        Text("Line", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(40.dp))
+                        Text("Opcode", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(140.dp))
+                        Text("Operands", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
                     }
 
                     HorizontalDivider()
 
                     LazyColumn {
-                        items(method.instructions) { instruction ->
+                        itemsIndexed(method.instructions, key = { index, _ -> index }) { _, instruction ->
                             InstructionRow(
                                 instruction = instruction,
                                 isSelected = instruction == selectedInstruction,
@@ -374,6 +436,7 @@ private fun DecompiledPanel(
             Text(
                 text = "Decompiled Source",
                 style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -386,7 +449,10 @@ private fun DecompiledPanel(
                 }
                 source == null -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Select a class to decompile", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            text = "Select a class to decompile",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
                 else -> {
@@ -418,7 +484,7 @@ private fun InstructionDetailPanel(
             horizontalArrangement = Arrangement.spacedBy(24.dp),
         ) {
             Column {
-                Text("Instruction", style = MaterialTheme.typography.labelSmall)
+                Text("Instruction", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
                 Text(
                     text = instruction.mnemonic,
                     style = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
@@ -426,32 +492,36 @@ private fun InstructionDetailPanel(
                 )
             }
             Column {
-                Text("Opcode", style = MaterialTheme.typography.labelSmall)
+                Text("Opcode", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
                 Text(
                     text = "0x${instruction.opcode.toString(16).uppercase()}  (${instruction.opcode})",
                     style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
                 )
             }
             Column {
-                Text("Offset", style = MaterialTheme.typography.labelSmall)
+                Text("Offset", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
                 Text(
                     text = "#${instruction.offset}",
                     style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
                 )
             }
             Column {
-                Text("Category", style = MaterialTheme.typography.labelSmall)
+                Text("Category", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
                 Text(
                     text = instruction.type.name.replace('_', ' '),
                     style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
                 )
             }
             if (instruction.operands.isNotBlank()) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Operands", style = MaterialTheme.typography.labelSmall)
+                    Text("Operands", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
                     Text(
                         text = instruction.operands,
                         style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -459,10 +529,11 @@ private fun InstructionDetailPanel(
             }
             if (instruction.lineNumber != null) {
                 Column {
-                    Text("Source Line", style = MaterialTheme.typography.labelSmall)
+                    Text("Source Line", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
                     Text(
                         text = "${instruction.lineNumber}",
                         style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
                     )
                 }
             }

@@ -69,7 +69,7 @@ fun HierarchyScreen(
                     checked = uiState.showClasses,
                     onCheckedChange = { viewModel.setShowClasses(it) },
                 )
-                Text("Classes", style = MaterialTheme.typography.bodyMedium)
+                Text("Classes", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -77,7 +77,7 @@ fun HierarchyScreen(
                     checked = uiState.showInterfaces,
                     onCheckedChange = { viewModel.setShowInterfaces(it) },
                 )
-                Text("Interfaces", style = MaterialTheme.typography.bodyMedium)
+                Text("Interfaces", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
             }
         }
 
@@ -125,6 +125,7 @@ private fun HierarchyHeader(
             Text(
                 text = "Class Hierarchy",
                 style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = "Explore inheritance relationships across loaded classes",
@@ -166,6 +167,7 @@ private fun HierarchyTree(
             Text(
                 text = "Hierarchy (${roots.size} roots)",
                 style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -267,6 +269,7 @@ private fun TreeNodeRow(
                     text = simpleName,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -292,6 +295,7 @@ private fun TreeNodeRow(
                     Text(
                         text = "${node.children.size}",
                         style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                     )
                 }
@@ -325,6 +329,7 @@ private fun ClassDetailPanel(
                 Text(
                     text = selectedClass.substringAfterLast('.'),
                     style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     text = selectedClass,
@@ -336,7 +341,7 @@ private fun ClassDetailPanel(
 
                 // Ancestor chain
                 if (ancestors.isNotEmpty()) {
-                    Text("Inheritance Chain", style = MaterialTheme.typography.titleSmall)
+                    Text("Inheritance Chain", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
                     Spacer(modifier = Modifier.height(4.dp))
                     for ((i, ancestor) in ancestors.reversed().withIndex()) {
                         Text(
@@ -349,6 +354,7 @@ private fun ClassDetailPanel(
                         text = "${"  ".repeat(ancestors.size)}↳ ${selectedClass.substringAfterLast('.')}",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                 }
@@ -357,12 +363,13 @@ private fun ClassDetailPanel(
                 if (classInfo != null) {
                     // Interfaces
                     if (classInfo.interfacesList.isNotEmpty()) {
-                        Text("Implements", style = MaterialTheme.typography.titleSmall)
+                        Text("Implements", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
                         Spacer(modifier = Modifier.height(4.dp))
                         for (iface in classInfo.interfacesList) {
                             Text(
                                 text = "  🔷 ${iface.substringAfterLast('.')}",
                                 style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface,
                             )
                         }
                         Spacer(modifier = Modifier.height(16.dp))
@@ -370,13 +377,14 @@ private fun ClassDetailPanel(
 
                     // Methods
                     if (classInfo.methodsList.isNotEmpty()) {
-                        Text("Methods (${classInfo.methodsList.size})", style = MaterialTheme.typography.titleSmall)
+                        Text("Methods (${classInfo.methodsList.size})", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
                         Spacer(modifier = Modifier.height(4.dp))
                         LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
                             items(classInfo.methodsList) { method ->
                                 Text(
                                     text = "  ${method.name}${method.signature}",
                                     style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
@@ -387,12 +395,13 @@ private fun ClassDetailPanel(
                     // Fields
                     if (classInfo.fieldsList.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text("Fields (${classInfo.fieldsList.size})", style = MaterialTheme.typography.titleSmall)
+                        Text("Fields (${classInfo.fieldsList.size})", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
                         Spacer(modifier = Modifier.height(4.dp))
                         for (field in classInfo.fieldsList) {
                             Text(
                                 text = "  ${field.type} ${field.name}",
                                 style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface,
                             )
                         }
                     }
