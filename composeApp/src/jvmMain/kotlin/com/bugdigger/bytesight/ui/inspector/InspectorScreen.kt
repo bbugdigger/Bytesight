@@ -64,24 +64,24 @@ fun InspectorScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Main content: bytecode on left, decompiled on right
+        // Main content: decompiled on left, bytecode on right
         Row(
             modifier = Modifier.weight(1f),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            // Decompiled source panel
+            DecompiledPanel(
+                source = uiState.decompiledSource,
+                isLoading = uiState.isLoading,
+                modifier = Modifier.weight(1f),
+            )
+
             // Bytecode panel
             BytecodePanel(
                 method = uiState.selectedMethod,
                 selectedInstruction = uiState.selectedInstruction,
                 isLoading = uiState.isLoading,
                 onSelectInstruction = viewModel::selectInstruction,
-                modifier = Modifier.weight(1f),
-            )
-
-            // Decompiled source panel
-            DecompiledPanel(
-                source = uiState.decompiledSource,
-                isLoading = uiState.isLoading,
                 modifier = Modifier.weight(1f),
             )
         }

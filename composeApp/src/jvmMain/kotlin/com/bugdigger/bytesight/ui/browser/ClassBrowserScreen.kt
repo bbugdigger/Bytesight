@@ -103,6 +103,7 @@ private fun ClassBrowserHeader(
             Text(
                 text = "Class Browser",
                 style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = "Browse and decompile classes from the target JVM",
@@ -157,6 +158,7 @@ private fun SearchBar(
             Text(
                 text = "Include system classes",
                 style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
     }
@@ -180,6 +182,7 @@ private fun ClassList(
             Text(
                 text = "Classes (${classes.size})",
                 style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -291,6 +294,7 @@ private fun CodePanel(
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurface,
             )
 
             Spacer(modifier = Modifier.height(12.dp))

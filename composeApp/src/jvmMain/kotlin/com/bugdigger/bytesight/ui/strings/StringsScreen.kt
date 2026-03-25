@@ -174,6 +174,7 @@ private fun SearchAndFilters(
             Text(
                 text = "Types:",
                 style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.align(Alignment.CenterVertically),
             )
             ConstantType.entries.forEach { type ->
@@ -195,6 +196,7 @@ private fun SearchAndFilters(
             Text(
                 text = "Patterns:",
                 style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.align(Alignment.CenterVertically),
             )
             StringPattern.entries.forEach { pattern ->

@@ -96,6 +96,7 @@ private fun AttachHeader(
             Text(
                 text = "Attach to JVM",
                 style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = "Select a running JVM process to analyze",
@@ -138,6 +139,7 @@ private fun ProcessList(
             Text(
                 text = "Running JVMs (${processes.size})",
                 style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -261,6 +263,7 @@ private fun AttachmentPanel(
             Text(
                 text = "Attachment",
                 style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -275,6 +278,7 @@ private fun AttachmentPanel(
                 Text(
                     text = "PID ${selectedProcess.pid}",
                     style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     text = selectedProcess.displayName,
