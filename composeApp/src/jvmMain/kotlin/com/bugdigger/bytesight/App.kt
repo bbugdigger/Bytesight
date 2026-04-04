@@ -12,6 +12,8 @@ import com.bugdigger.bytesight.ui.browser.ClassBrowserScreen
 import com.bugdigger.bytesight.ui.browser.ClassBrowserViewModel
 import com.bugdigger.bytesight.ui.hierarchy.HierarchyScreen
 import com.bugdigger.bytesight.ui.hierarchy.HierarchyViewModel
+import com.bugdigger.bytesight.ui.cfg.CfgScreen
+import com.bugdigger.bytesight.ui.cfg.CfgViewModel
 import com.bugdigger.bytesight.ui.inspector.InspectorScreen
 import com.bugdigger.bytesight.ui.inspector.InspectorViewModel
 import com.bugdigger.bytesight.ui.navigation.NavigationState
@@ -120,6 +122,18 @@ private fun MainContent(
             if (connectionKey != null) {
                 val viewModel: InspectorViewModel = koinInject()
                 InspectorScreen(
+                    viewModel = viewModel,
+                    connectionKey = connectionKey,
+                    modifier = modifier,
+                )
+            }
+        }
+
+        Screen.CFG -> {
+            val connectionKey = navState.connectionKey
+            if (connectionKey != null) {
+                val viewModel: CfgViewModel = koinInject()
+                CfgScreen(
                     viewModel = viewModel,
                     connectionKey = connectionKey,
                     modifier = modifier,

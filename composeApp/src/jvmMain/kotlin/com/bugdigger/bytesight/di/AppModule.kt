@@ -5,6 +5,7 @@ import com.bugdigger.bytesight.service.AttachService
 import com.bugdigger.bytesight.ui.attach.AttachViewModel
 import com.bugdigger.bytesight.ui.browser.ClassBrowserViewModel
 import com.bugdigger.bytesight.ui.hierarchy.HierarchyViewModel
+import com.bugdigger.bytesight.ui.cfg.CfgViewModel
 import com.bugdigger.bytesight.ui.inspector.InspectorViewModel
 import com.bugdigger.bytesight.ui.settings.SettingsViewModel
 import com.bugdigger.bytesight.ui.strings.StringsViewModel
@@ -33,6 +34,7 @@ val appModule = module {
     factoryOf(::ClassBrowserViewModel)
     factoryOf(::HierarchyViewModel)
     factoryOf(::InspectorViewModel)
+    factoryOf(::CfgViewModel)
     factoryOf(::StringsViewModel)
     factoryOf(::TraceViewModel)
     factoryOf(::SettingsViewModel)

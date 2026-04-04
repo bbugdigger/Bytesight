@@ -8,6 +8,7 @@ enum class Screen(val title: String, val icon: String) {
     CLASS_BROWSER("Classes", "📦"),
     HIERARCHY("Hierarchy", "🌳"),
     INSPECTOR("Inspector", "🔍"),
+    CFG("Control Flow", "🔀"),
     STRINGS("Strings", "📝"),
     TRACE("Trace", "📊"),
     SETTINGS("Settings", "⚙"),

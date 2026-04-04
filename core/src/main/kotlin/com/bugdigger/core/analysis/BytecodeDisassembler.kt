@@ -336,7 +336,7 @@ private class InstructionCollectorVisitor(
 /**
  * Categorizes an opcode into an [InstructionCategory] for UI color coding.
  */
-private fun categorizeOpcode(opcode: Int): InstructionCategory = when (opcode) {
+internal fun categorizeOpcode(opcode: Int): InstructionCategory = when (opcode) {
     // Control flow
     in Opcodes.IFEQ..Opcodes.IF_ACMPNE,
     Opcodes.GOTO, Opcodes.JSR, Opcodes.RET,
