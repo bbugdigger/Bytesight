@@ -206,23 +206,33 @@ class CfgViewModelTest {
         }
 
         @Test
-        fun `computeBlockSize without comments should return base size`() {
+        fun `computeBlockSize at density 1 should return dp-based size`() {
             val block = makeBlock(3)
-            val (width, height) = CfgViewModel.computeBlockSize(block)
+            val (width, height) = CfgViewModel.computeBlockSize(block, density = 1f)
 
-            // HEADER_HEIGHT(28) + 3*INSTRUCTION_HEIGHT(20) + PADDING(12) = 100
+            // HEADER_HEIGHT_DP(24) + 3*INSTRUCTION_HEIGHT_DP(20) + PADDING_DP(4) = 88
             assertEquals(300f, width)
-            assertEquals(100f, height)
+            assertEquals(88f, height)
+        }
+
+        @Test
+        fun `computeBlockSize at density 2 should double the pixel values`() {
+            val block = makeBlock(3)
+            val (width1x, height1x) = CfgViewModel.computeBlockSize(block, density = 1f)
+            val (width2x, height2x) = CfgViewModel.computeBlockSize(block, density = 2f)
+
+            assertEquals(width1x * 2f, width2x)
+            assertEquals(height1x * 2f, height2x)
         }
 
         @Test
         fun `computeBlockSize with block-level comment should add extra height`() {
             val block = makeBlock(3)
             val comments = mapOf<Int?, String>(null to "block comment")
-            val (_, heightWithComment) = CfgViewModel.computeBlockSize(block, comments)
-            val (_, heightWithout) = CfgViewModel.computeBlockSize(block)
+            val (_, heightWithComment) = CfgViewModel.computeBlockSize(block, comments, density = 1f)
+            val (_, heightWithout) = CfgViewModel.computeBlockSize(block, density = 1f)
 
-            // Block comment adds BLOCK_COMMENT_HEIGHT (18)
+            // Block comment adds BLOCK_COMMENT_HEIGHT_DP (18) at density 1
             assertEquals(heightWithout + 18f, heightWithComment)
         }
 
@@ -230,8 +240,8 @@ class CfgViewModelTest {
         fun `computeBlockSize with instruction comments should not change height`() {
             val block = makeBlock(3)
             val comments = mapOf<Int?, String>(0 to "comment on first", 2 to "comment on last")
-            val (_, heightWithComment) = CfgViewModel.computeBlockSize(block, comments)
-            val (_, heightWithout) = CfgViewModel.computeBlockSize(block)
+            val (_, heightWithComment) = CfgViewModel.computeBlockSize(block, comments, density = 1f)
+            val (_, heightWithout) = CfgViewModel.computeBlockSize(block, density = 1f)
 
             // Instruction comments are inline, no extra height
             assertEquals(heightWithout, heightWithComment)
@@ -240,8 +250,8 @@ class CfgViewModelTest {
         @Test
         fun `computeBlockSize with null comments map should return base size`() {
             val block = makeBlock(5)
-            val (_, heightNull) = CfgViewModel.computeBlockSize(block, null)
-            val (_, heightNoArg) = CfgViewModel.computeBlockSize(block)
+            val (_, heightNull) = CfgViewModel.computeBlockSize(block, null, density = 1f)
+            val (_, heightNoArg) = CfgViewModel.computeBlockSize(block, density = 1f)
 
             assertEquals(heightNoArg, heightNull)
         }

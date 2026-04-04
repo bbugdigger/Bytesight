@@ -24,6 +24,7 @@ import com.bugdigger.bytesight.ui.components.CodeViewer
 import com.bugdigger.bytesight.ui.components.GraphView
 import com.bugdigger.bytesight.ui.components.LayoutNode
 import com.bugdigger.core.analysis.*
+import androidx.compose.ui.platform.LocalDensity
 
 @Composable
 fun CfgScreen(
@@ -32,6 +33,12 @@ fun CfgScreen(
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // Pass screen density to ViewModel for correct block size calculations
+    val density = LocalDensity.current.density
+    LaunchedEffect(density) {
+        viewModel.setDensity(density)
+    }
 
     // Comment dialog state
     var showCommentDialog by remember { mutableStateOf(false) }

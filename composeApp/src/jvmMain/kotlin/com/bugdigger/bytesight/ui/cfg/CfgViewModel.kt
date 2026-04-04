@@ -62,10 +62,25 @@ class CfgViewModel(
     private var connectionKey: String? = null
     private var cachedBytecode: ByteArray? = null
 
+    /** Screen density for computing block sizes in pixels. Updated from the composable. */
+    private var screenDensity: Float = 1f
+
     fun setConnectionKey(key: String) {
         if (connectionKey != key) {
             connectionKey = key
             loadClasses()
+        }
+    }
+
+    /**
+     * Sets the screen density so block size calculations produce correct pixel values.
+     * Must be called from the composable layer before any layout computation.
+     */
+    fun setDensity(density: Float) {
+        if (screenDensity != density) {
+            screenDensity = density
+            // Re-layout if we already have a CFG, since sizes depend on density
+            recomputeLayout()
         }
     }
 
@@ -182,7 +197,7 @@ class CfgViewModel(
                     nodes = cfg.blocks.map { it.id to it },
                     edges = cfg.edges.map { Triple(it.sourceId, it.targetId, it) },
                     entryId = cfg.entryBlockId,
-                    nodeSize = { block -> computeBlockSize(block, comments[block.id]) },
+                    nodeSize = { block -> computeBlockSize(block, comments[block.id], screenDensity) },
                 )
                 Pair(cfg, layout)
             }.onSuccess { (cfg, layout) ->
@@ -268,7 +283,7 @@ class CfgViewModel(
                     nodes = cfg.blocks.map { it.id to it },
                     edges = cfg.edges.map { Triple(it.sourceId, it.targetId, it) },
                     entryId = cfg.entryBlockId,
-                    nodeSize = { block -> computeBlockSize(block, comments[block.id]) },
+                    nodeSize = { block -> computeBlockSize(block, comments[block.id], screenDensity) },
                 )
             }.onSuccess { layout ->
                 _uiState.update { it.copy(graphLayout = layout) }
@@ -281,28 +296,38 @@ class CfgViewModel(
     }
 
     companion object {
-        private const val BLOCK_WIDTH = 300f
-        private const val HEADER_HEIGHT = 28f
-        private const val BLOCK_COMMENT_HEIGHT = 18f
-        private const val INSTRUCTION_HEIGHT = 20f
-        private const val PADDING = 12f
+        // All size constants are in dp units. They get multiplied by screen density
+        // to produce pixel values for the layout engine.
+        private const val BLOCK_WIDTH_DP = 300f
+        private const val HEADER_HEIGHT_DP = 24f        // Header row: text + 2dp padding top/bottom
+        private const val BLOCK_COMMENT_HEIGHT_DP = 18f  // Block-level comment row
+        private const val INSTRUCTION_HEIGHT_DP = 20f    // Instruction row: text + 1dp padding top/bottom
+        private const val PADDING_DP = 4f                // Bottom padding inside the card
 
         /**
-         * Computes the pixel size for a basic block, accounting for any comments.
+         * Computes the pixel size for a basic block, accounting for comments and density.
+         *
+         * The height is calculated as:
+         *   header + block_comment? + (instructions × instruction_height) + bottom_padding
+         * All measured in dp then multiplied by [density] to get pixels.
          *
          * @param block The basic block
          * @param blockComments Comments for this block (key = instruction offset or null for block comment)
+         * @param density Screen density (dp × density = px)
          */
         fun computeBlockSize(
             block: BasicBlock,
             blockComments: Map<Int?, String>? = null,
+            density: Float = 1f,
         ): Pair<Float, Float> {
-            var height = HEADER_HEIGHT + (block.instructions.size * INSTRUCTION_HEIGHT) + PADDING
+            var heightDp = HEADER_HEIGHT_DP +
+                (block.instructions.size * INSTRUCTION_HEIGHT_DP) +
+                PADDING_DP
             // Block-level comment adds an extra row
             if (blockComments?.containsKey(null) == true) {
-                height += BLOCK_COMMENT_HEIGHT
+                heightDp += BLOCK_COMMENT_HEIGHT_DP
             }
-            return Pair(BLOCK_WIDTH, height)
+            return Pair(BLOCK_WIDTH_DP * density, heightDp * density)
         }
     }
 }
