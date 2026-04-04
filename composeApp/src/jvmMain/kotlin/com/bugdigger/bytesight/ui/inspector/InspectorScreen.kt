@@ -30,6 +30,7 @@ fun InspectorScreen(
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var isDropdownExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(connectionKey) {
         viewModel.setConnectionKey(connectionKey)
@@ -60,6 +61,7 @@ fun InspectorScreen(
             onSelectClass = viewModel::selectClass,
             onSelectMethod = viewModel::selectMethod,
             isLoading = uiState.isLoading || uiState.isLoadingClasses,
+            onDropdownExpandedChange = { isDropdownExpanded = it },
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -73,6 +75,7 @@ fun InspectorScreen(
             DecompiledPanel(
                 source = uiState.decompiledSource,
                 isLoading = uiState.isLoading,
+                isSwingVisible = !isDropdownExpanded,
                 modifier = Modifier.weight(1f),
             )
 
@@ -120,10 +123,15 @@ private fun SelectorRow(
     onSelectClass: (String) -> Unit,
     onSelectMethod: (String, String) -> Unit,
     isLoading: Boolean,
+    onDropdownExpandedChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var classExpanded by remember { mutableStateOf(false) }
     var methodExpanded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(classExpanded, methodExpanded) {
+        onDropdownExpandedChange(classExpanded || methodExpanded)
+    }
     var classSearchText by remember { mutableStateOf("") }
 
     // Sync the text field with the selected class name
@@ -424,6 +432,7 @@ private fun InstructionRow(
 private fun DecompiledPanel(
     source: String?,
     isLoading: Boolean,
+    isSwingVisible: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -456,10 +465,12 @@ private fun DecompiledPanel(
                     }
                 }
                 else -> {
-                    CodeViewer(
-                        code = source,
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                    if (isSwingVisible) {
+                        CodeViewer(
+                            code = source,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                 }
             }
         }

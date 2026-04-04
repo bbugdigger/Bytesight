@@ -15,6 +15,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -45,6 +46,7 @@ fun CfgScreen(
     var commentTargetBlockId by remember { mutableStateOf<String?>(null) }
     var commentTargetOffset by remember { mutableStateOf<Int?>(null) }
     var commentInitialText by remember { mutableStateOf("") }
+    var isDropdownExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(connectionKey) {
         viewModel.setConnectionKey(connectionKey)
@@ -77,25 +79,36 @@ fun CfgScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Selectors row
-        SelectorRow(
-            classes = uiState.classes,
-            selectedClassName = uiState.selectedClassName,
-            methods = uiState.disassembledClass?.methods ?: emptyList(),
-            selectedMethod = uiState.selectedMethod,
-            onSelectClass = viewModel::selectClass,
-            onSelectMethod = viewModel::selectMethod,
-            isLoading = uiState.isLoading || uiState.isLoadingClasses,
-        )
+        // Selectors row — zIndex ensures dropdowns render above the panels below
+        Box(modifier = Modifier.zIndex(1f)) {
+            SelectorRow(
+                classes = uiState.classes,
+                selectedClassName = uiState.selectedClassName,
+                methods = uiState.disassembledClass?.methods ?: emptyList(),
+                selectedMethod = uiState.selectedMethod,
+                onSelectClass = viewModel::selectClass,
+                onSelectMethod = viewModel::selectMethod,
+                isLoading = uiState.isLoading || uiState.isLoadingClasses,
+                onDropdownExpandedChange = { isDropdownExpanded = it },
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Main content: CFG graph + decompiled source
+        // Main content: decompiled source + CFG graph
         Row(
             modifier = Modifier.weight(1f),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // Left: CFG graph
+            // Left: Decompiled source
+            DecompiledPanel(
+                source = uiState.decompiledSource,
+                isLoading = uiState.isLoading,
+                isSwingVisible = !isDropdownExpanded,
+                modifier = Modifier.weight(1f),
+            )
+
+            // Right: CFG graph
             CfgGraphPanel(
                 uiState = uiState,
                 onBlockClick = { viewModel.selectBlock(it) },
@@ -108,14 +121,7 @@ fun CfgScreen(
                     commentInitialText = uiState.comments[blockId]?.get(offset) ?: ""
                     showCommentDialog = true
                 },
-                modifier = Modifier.weight(0.65f),
-            )
-
-            // Right: Decompiled source
-            DecompiledPanel(
-                source = uiState.decompiledSource,
-                isLoading = uiState.isLoading,
-                modifier = Modifier.weight(0.35f),
+                modifier = Modifier.weight(1f),
             )
         }
     }
@@ -494,6 +500,7 @@ private fun LegendItem(label: String, color: Color) {
 private fun DecompiledPanel(
     source: String?,
     isLoading: Boolean,
+    isSwingVisible: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -521,11 +528,15 @@ private fun DecompiledPanel(
                 }
 
                 source != null -> {
-                    CodeViewer(
-                        code = source,
-                        language = "java",
-                        modifier = Modifier.weight(1f).fillMaxWidth(),
-                    )
+                    if (isSwingVisible) {
+                        CodeViewer(
+                            code = source,
+                            language = "java",
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
                 }
 
                 else -> {
@@ -554,11 +565,16 @@ private fun SelectorRow(
     onSelectClass: (String) -> Unit,
     onSelectMethod: (String, String) -> Unit,
     isLoading: Boolean,
+    onDropdownExpandedChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var classExpanded by remember { mutableStateOf(false) }
     var methodExpanded by remember { mutableStateOf(false) }
     var classSearchText by remember { mutableStateOf("") }
+
+    LaunchedEffect(classExpanded, methodExpanded) {
+        onDropdownExpandedChange(classExpanded || methodExpanded)
+    }
 
     LaunchedEffect(selectedClassName) {
         classSearchText = selectedClassName ?: ""
