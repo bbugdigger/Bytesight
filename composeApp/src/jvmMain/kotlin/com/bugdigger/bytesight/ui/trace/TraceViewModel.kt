@@ -3,8 +3,10 @@ package com.bugdigger.bytesight.ui.trace
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bugdigger.bytesight.service.AgentClient
+import com.bugdigger.protocol.ClassInfo
 import com.bugdigger.protocol.HookInfo
 import com.bugdigger.protocol.HookType
+import com.bugdigger.protocol.MethodInfo
 import com.bugdigger.protocol.MethodTraceEvent
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,6 +43,12 @@ data class TraceUiState(
     val isStreaming: Boolean = false,
     val error: String? = null,
 
+    // Class/method selection
+    val classes: List<ClassInfo> = emptyList(),
+    val isLoadingClasses: Boolean = false,
+    val selectedClass: ClassInfo? = null,
+    val selectedMethod: MethodInfo? = null,
+
     // New hook form
     val newHookClassName: String = "",
     val newHookMethodName: String = "",
@@ -73,7 +81,52 @@ class TraceViewModel(
     fun setConnectionKey(key: String) {
         if (connectionKey != key) {
             connectionKey = key
+            loadClasses()
             refreshHooks()
+        }
+    }
+
+    private fun loadClasses() {
+        val key = connectionKey ?: return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingClasses = true) }
+
+            agentClient.listClasses(
+                connectionKey = key,
+                includeSystemClasses = false,
+            ).onSuccess { classes ->
+                _uiState.update { it.copy(classes = classes, isLoadingClasses = false) }
+            }.onFailure { e ->
+                _uiState.update {
+                    it.copy(
+                        isLoadingClasses = false,
+                        error = "Failed to load classes: ${e.message}",
+                    )
+                }
+            }
+        }
+    }
+
+    fun selectClass(classInfo: ClassInfo) {
+        _uiState.update {
+            it.copy(
+                selectedClass = classInfo,
+                selectedMethod = null,
+                newHookClassName = classInfo.name,
+                newHookMethodName = "",
+                newHookMethodSignature = "",
+            )
+        }
+    }
+
+    fun selectMethod(methodInfo: MethodInfo) {
+        _uiState.update {
+            it.copy(
+                selectedMethod = methodInfo,
+                newHookMethodName = methodInfo.name,
+                newHookMethodSignature = methodInfo.signature,
+            )
         }
     }
 
@@ -163,6 +216,8 @@ class TraceViewModel(
                     _uiState.update {
                         it.copy(
                             isAddingHook = false,
+                            selectedClass = null,
+                            selectedMethod = null,
                             newHookClassName = "",
                             newHookMethodName = "",
                             newHookMethodSignature = "",

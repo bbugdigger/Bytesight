@@ -13,8 +13,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.bugdigger.protocol.ClassInfo
 import com.bugdigger.protocol.HookInfo
 import com.bugdigger.protocol.HookType
+import com.bugdigger.protocol.MethodInfo
 import com.bugdigger.protocol.MethodTraceEvent
 
 /**
@@ -66,14 +68,17 @@ fun TraceScreen(
             HooksPanel(
                 hooks = uiState.hooks,
                 isLoading = uiState.isLoadingHooks,
+                classes = uiState.classes,
+                isLoadingClasses = uiState.isLoadingClasses,
+                selectedClass = uiState.selectedClass,
+                selectedMethod = uiState.selectedMethod,
                 newHookClassName = uiState.newHookClassName,
                 newHookMethodName = uiState.newHookMethodName,
                 newHookMethodSignature = uiState.newHookMethodSignature,
                 newHookType = uiState.newHookType,
                 isAddingHook = uiState.isAddingHook,
-                onClassNameChange = viewModel::setNewHookClassName,
-                onMethodNameChange = viewModel::setNewHookMethodName,
-                onMethodSignatureChange = viewModel::setNewHookMethodSignature,
+                onSelectClass = viewModel::selectClass,
+                onSelectMethod = viewModel::selectMethod,
                 onHookTypeChange = viewModel::setNewHookType,
                 onAddHook = viewModel::addHook,
                 onRemoveHook = viewModel::removeHook,
@@ -146,14 +151,17 @@ private fun TraceHeader(
 private fun HooksPanel(
     hooks: List<HookInfo>,
     isLoading: Boolean,
+    classes: List<ClassInfo>,
+    isLoadingClasses: Boolean,
+    selectedClass: ClassInfo?,
+    selectedMethod: MethodInfo?,
     newHookClassName: String,
     newHookMethodName: String,
     newHookMethodSignature: String,
     newHookType: HookType,
     isAddingHook: Boolean,
-    onClassNameChange: (String) -> Unit,
-    onMethodNameChange: (String) -> Unit,
-    onMethodSignatureChange: (String) -> Unit,
+    onSelectClass: (ClassInfo) -> Unit,
+    onSelectMethod: (MethodInfo) -> Unit,
     onHookTypeChange: (HookType) -> Unit,
     onAddHook: () -> Unit,
     onRemoveHook: (String) -> Unit,
@@ -197,14 +205,17 @@ private fun HooksPanel(
 
             // Add hook form
             AddHookForm(
+                classes = classes,
+                isLoadingClasses = isLoadingClasses,
+                selectedClass = selectedClass,
+                selectedMethod = selectedMethod,
                 className = newHookClassName,
                 methodName = newHookMethodName,
                 methodSignature = newHookMethodSignature,
                 hookType = newHookType,
                 isAdding = isAddingHook,
-                onClassNameChange = onClassNameChange,
-                onMethodNameChange = onMethodNameChange,
-                onMethodSignatureChange = onMethodSignatureChange,
+                onSelectClass = onSelectClass,
+                onSelectMethod = onSelectMethod,
                 onHookTypeChange = onHookTypeChange,
                 onAdd = onAddHook,
             )
@@ -246,14 +257,17 @@ private fun HooksPanel(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddHookForm(
+    classes: List<ClassInfo>,
+    isLoadingClasses: Boolean,
+    selectedClass: ClassInfo?,
+    selectedMethod: MethodInfo?,
     className: String,
     methodName: String,
     methodSignature: String,
     hookType: HookType,
     isAdding: Boolean,
-    onClassNameChange: (String) -> Unit,
-    onMethodNameChange: (String) -> Unit,
-    onMethodSignatureChange: (String) -> Unit,
+    onSelectClass: (ClassInfo) -> Unit,
+    onSelectMethod: (MethodInfo) -> Unit,
     onHookTypeChange: (HookType) -> Unit,
     onAdd: () -> Unit,
     modifier: Modifier = Modifier,
@@ -262,32 +276,154 @@ private fun AddHookForm(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        OutlinedTextField(
-            value = className,
-            onValueChange = onClassNameChange,
-            label = { Text("Class name") },
-            placeholder = { Text("com.example.MyClass") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        // Class dropdown (searchable)
+        var classExpanded by remember { mutableStateOf(false) }
+        var classSearchText by remember { mutableStateOf("") }
 
-        OutlinedTextField(
-            value = methodName,
-            onValueChange = onMethodNameChange,
-            label = { Text("Method name") },
-            placeholder = { Text("myMethod") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        LaunchedEffect(selectedClass) {
+            classSearchText = selectedClass?.name ?: ""
+        }
 
-        OutlinedTextField(
-            value = methodSignature,
-            onValueChange = onMethodSignatureChange,
-            label = { Text("Signature (optional)") },
-            placeholder = { Text("(Ljava/lang/String;)V") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        ExposedDropdownMenuBox(
+            expanded = classExpanded,
+            onExpandedChange = { classExpanded = it },
+        ) {
+            OutlinedTextField(
+                value = classSearchText,
+                onValueChange = { text ->
+                    classSearchText = text
+                    classExpanded = true
+                },
+                label = { Text("Class") },
+                placeholder = {
+                    if (isLoadingClasses) Text("Loading classes...")
+                    else Text("Type to search classes...")
+                },
+                singleLine = true,
+                trailingIcon = {
+                    if (isLoadingClasses) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = classExpanded)
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
+            )
+
+            val filteredClasses = remember(classSearchText, classes) {
+                if (classSearchText.isBlank() || classSearchText == selectedClass?.name) {
+                    classes.take(100)
+                } else {
+                    classes.filter {
+                        it.name.lowercase().contains(classSearchText.lowercase())
+                    }.take(100)
+                }
+            }
+
+            ExposedDropdownMenu(
+                expanded = classExpanded,
+                onDismissRequest = {
+                    classExpanded = false
+                    if (classSearchText != selectedClass?.name) {
+                        classSearchText = selectedClass?.name ?: ""
+                    }
+                },
+                modifier = Modifier.heightIn(max = 300.dp),
+            ) {
+                if (filteredClasses.isEmpty()) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                if (isLoadingClasses) "Loading..." else "No classes found",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        onClick = {},
+                        enabled = false,
+                    )
+                } else {
+                    filteredClasses.forEach { classInfo ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(
+                                        classInfo.simpleName,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                    Text(
+                                        classInfo.packageName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            },
+                            onClick = {
+                                classSearchText = classInfo.name
+                                onSelectClass(classInfo)
+                                classExpanded = false
+                            },
+                        )
+                    }
+                }
+            }
+        }
+
+        // Method dropdown
+        var methodExpanded by remember { mutableStateOf(false) }
+        val methods = selectedClass?.methodsList ?: emptyList()
+
+        ExposedDropdownMenuBox(
+            expanded = methodExpanded,
+            onExpandedChange = { if (methods.isNotEmpty()) methodExpanded = it },
+        ) {
+            OutlinedTextField(
+                value = selectedMethod?.let { "${it.name}${it.signature}" } ?: "",
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Method") },
+                placeholder = {
+                    Text(
+                        if (selectedClass == null) "Select a class first..."
+                        else "Select a method...",
+                    )
+                },
+                singleLine = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = methodExpanded) },
+                enabled = methods.isNotEmpty(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+            )
+
+            ExposedDropdownMenu(
+                expanded = methodExpanded,
+                onDismissRequest = { methodExpanded = false },
+                modifier = Modifier.heightIn(max = 300.dp),
+            ) {
+                methods.forEach { method ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = "${method.name}${method.signature}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontFamily = FontFamily.Monospace,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                        onClick = {
+                            onSelectMethod(method)
+                            methodExpanded = false
+                        },
+                    )
+                }
+            }
+        }
 
         // Hook type selector
         var expanded by remember { mutableStateOf(false) }
