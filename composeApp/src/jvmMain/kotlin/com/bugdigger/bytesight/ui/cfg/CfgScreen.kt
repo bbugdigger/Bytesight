@@ -104,7 +104,7 @@ fun CfgScreen(
             DecompiledPanel(
                 source = uiState.decompiledSource,
                 isLoading = uiState.isLoading,
-                isSwingVisible = !isDropdownExpanded,
+                isSwingVisible = !isDropdownExpanded && !showCommentDialog,
                 modifier = Modifier.weight(1f),
             )
 
