@@ -2,6 +2,7 @@ package com.bugdigger.bytesight.ui.cfg
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -9,9 +10,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -27,6 +32,12 @@ fun CfgScreen(
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // Comment dialog state
+    var showCommentDialog by remember { mutableStateOf(false) }
+    var commentTargetBlockId by remember { mutableStateOf<String?>(null) }
+    var commentTargetOffset by remember { mutableStateOf<Int?>(null) }
+    var commentInitialText by remember { mutableStateOf("") }
 
     LaunchedEffect(connectionKey) {
         viewModel.setConnectionKey(connectionKey)
@@ -81,7 +92,15 @@ fun CfgScreen(
             CfgGraphPanel(
                 uiState = uiState,
                 onBlockClick = { viewModel.selectBlock(it) },
+                onBlockHeaderClick = { viewModel.selectBlockHeader(it) },
                 onInstructionClick = { blockId, offset -> viewModel.selectInstruction(blockId, offset) },
+                onRequestComment = { blockId, offset ->
+                    commentTargetBlockId = blockId
+                    commentTargetOffset = offset
+                    // Pre-fill with existing comment if present
+                    commentInitialText = uiState.comments[blockId]?.get(offset) ?: ""
+                    showCommentDialog = true
+                },
                 modifier = Modifier.weight(0.65f),
             )
 
@@ -93,17 +112,56 @@ fun CfgScreen(
             )
         }
     }
+
+    // Comment dialog
+    if (showCommentDialog) {
+        CommentDialog(
+            initialText = commentInitialText,
+            isBlockComment = commentTargetOffset == null,
+            onConfirm = { text ->
+                val blockId = commentTargetBlockId
+                if (blockId != null) {
+                    viewModel.addComment(blockId, commentTargetOffset, text)
+                }
+                showCommentDialog = false
+            },
+            onDismiss = { showCommentDialog = false },
+        )
+    }
 }
 
 @Composable
 private fun CfgGraphPanel(
     uiState: CfgUiState,
     onBlockClick: (String?) -> Unit,
+    onBlockHeaderClick: (String) -> Unit,
     onInstructionClick: (String, Int) -> Unit,
+    onRequestComment: (blockId: String, instructionOffset: Int?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Focus requester so the panel can capture keyboard events
+    val focusRequester = remember { FocusRequester() }
+
     Card(
-        modifier = modifier.fillMaxHeight(),
+        modifier = modifier
+            .fillMaxHeight()
+            .focusRequester(focusRequester)
+            .focusable()
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && event.key == Key.Slash) {
+                    val blockId = uiState.selectedBlockId
+                    if (blockId != null) {
+                        if (uiState.isBlockHeaderSelected) {
+                            // Block-level comment
+                            onRequestComment(blockId, null)
+                        } else if (uiState.selectedInstructionOffset != null) {
+                            // Instruction-level comment
+                            onRequestComment(blockId, uiState.selectedInstructionOffset)
+                        }
+                        true
+                    } else false
+                } else false
+            },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
         ),
@@ -127,12 +185,23 @@ private fun CfgGraphPanel(
                 }
 
                 else -> {
+                    // Request focus so key events work
+                    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+
                     Column(modifier = Modifier.fillMaxSize()) {
                         // Edge legend
                         EdgeLegend(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(8.dp),
+                        )
+
+                        // Hint for comment shortcut
+                        Text(
+                            text = "Press / to add a comment on the selected instruction or block header",
+                            modifier = Modifier.padding(horizontal = 8.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         )
 
                         // Graph
@@ -144,9 +213,12 @@ private fun CfgGraphPanel(
                                 BasicBlockNodeView(
                                     block = node.data,
                                     isSelected = node.id == uiState.selectedBlockId,
+                                    isBlockHeaderSelected = node.id == uiState.selectedBlockId && uiState.isBlockHeaderSelected,
                                     selectedInstructionOffset = if (node.id == uiState.selectedBlockId) {
                                         uiState.selectedInstructionOffset
                                     } else null,
+                                    blockComments = uiState.comments[node.id] ?: emptyMap(),
+                                    onBlockHeaderClick = { onBlockHeaderClick(node.id) },
                                     onInstructionClick = { offset -> onInstructionClick(node.id, offset) },
                                 )
                             },
@@ -169,7 +241,10 @@ private fun CfgGraphPanel(
 private fun BasicBlockNodeView(
     block: BasicBlock,
     isSelected: Boolean,
+    isBlockHeaderSelected: Boolean,
     selectedInstructionOffset: Int?,
+    blockComments: Map<Int?, String>,
+    onBlockHeaderClick: () -> Unit,
     onInstructionClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -196,11 +271,18 @@ private fun BasicBlockNodeView(
         ),
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Block header
+            // Block header (clickable for block-level comments)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(borderColor.copy(alpha = 0.15f))
+                    .background(
+                        if (isBlockHeaderSelected) {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                        } else {
+                            borderColor.copy(alpha = 0.15f)
+                        }
+                    )
+                    .clickable { onBlockHeaderClick() }
                     .padding(horizontal = 6.dp, vertical = 2.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
@@ -226,9 +308,31 @@ private fun BasicBlockNodeView(
                 }
             }
 
+            // Block-level comment (below header)
+            blockComments[null]?.let { blockComment ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f))
+                        .padding(horizontal = 6.dp, vertical = 1.dp),
+                ) {
+                    Text(
+                        text = "; $blockComment",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = FontFamily.Monospace,
+                        fontStyle = FontStyle.Italic,
+                        color = Color(0xFF6A9955),  // Green-gray like IDA comments
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+
             // Instructions
             for (instr in block.instructions) {
                 val instrSelected = selectedInstructionOffset == instr.offset
+                val instrComment = blockComments[instr.offset]
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -265,12 +369,83 @@ private fun BasicBlockNodeView(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
+                            modifier = if (instrComment != null) Modifier.weight(1f, fill = false) else Modifier,
+                        )
+                    }
+                    // Inline comment (IDA-style: "; comment text")
+                    if (instrComment != null) {
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(
+                            text = "; $instrComment",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontFamily = FontFamily.Monospace,
+                            color = Color(0xFF6A9955),  // Green-gray comment color
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
             }
         }
     }
+}
+
+/**
+ * Dialog for entering or editing a comment on a block or instruction.
+ */
+@Composable
+private fun CommentDialog(
+    initialText: String,
+    isBlockComment: Boolean,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var text by remember { mutableStateOf(initialText) }
+    val focusRequester = remember { FocusRequester() }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = if (isBlockComment) "Block Comment" else "Instruction Comment",
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    text = if (isBlockComment) {
+                        "Enter a comment for this basic block. Leave empty to remove."
+                    } else {
+                        "Enter a comment for this instruction. Leave empty to remove."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    placeholder = { Text("Type your comment...") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester),
+                )
+                LaunchedEffect(Unit) { focusRequester.requestFocus() }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(text) }) {
+                Text("OK")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
 }
 
 @Composable

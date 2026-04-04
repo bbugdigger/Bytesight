@@ -16,6 +16,19 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/**
+ * A user-added comment on a basic block or instruction.
+ *
+ * @property blockId The block this comment belongs to
+ * @property instructionOffset The instruction offset, or `null` for block-level comments
+ * @property text The comment text
+ */
+data class CfgComment(
+    val blockId: String,
+    val instructionOffset: Int?,
+    val text: String,
+)
+
 data class CfgUiState(
     val classes: List<ClassInfo> = emptyList(),
     val isLoadingClasses: Boolean = false,
@@ -27,6 +40,10 @@ data class CfgUiState(
     val decompiledSource: String? = null,
     val selectedBlockId: String? = null,
     val selectedInstructionOffset: Int? = null,
+    /** True when the block header itself is selected (for block-level comments). */
+    val isBlockHeaderSelected: Boolean = false,
+    /** User comments keyed by blockId → (instructionOffset? → comment text). */
+    val comments: Map<String, Map<Int?, String>> = emptyMap(),
     val isLoading: Boolean = false,
     val error: String? = null,
 )
@@ -86,6 +103,8 @@ class CfgViewModel(
                 decompiledSource = null,
                 selectedBlockId = null,
                 selectedInstructionOffset = null,
+                isBlockHeaderSelected = false,
+                comments = emptyMap(),
                 isLoading = true,
                 error = null,
             )
@@ -143,6 +162,8 @@ class CfgViewModel(
                 graphLayout = null,
                 selectedBlockId = null,
                 selectedInstructionOffset = null,
+                isBlockHeaderSelected = false,
+                comments = emptyMap(),
             )
         }
 
@@ -156,11 +177,12 @@ class CfgViewModel(
 
             runCatching {
                 val cfg = cfgBuilder.buildCfg(bytecode, methodName, descriptor)
+                val comments = _uiState.value.comments
                 val layout = layoutEngine.layout(
                     nodes = cfg.blocks.map { it.id to it },
                     edges = cfg.edges.map { Triple(it.sourceId, it.targetId, it) },
                     entryId = cfg.entryBlockId,
-                    nodeSize = ::computeBlockSize,
+                    nodeSize = { block -> computeBlockSize(block, comments[block.id]) },
                 )
                 Pair(cfg, layout)
             }.onSuccess { (cfg, layout) ->
@@ -176,11 +198,82 @@ class CfgViewModel(
     }
 
     fun selectBlock(blockId: String?) {
-        _uiState.update { it.copy(selectedBlockId = blockId, selectedInstructionOffset = null) }
+        _uiState.update {
+            it.copy(
+                selectedBlockId = blockId,
+                selectedInstructionOffset = null,
+                isBlockHeaderSelected = false,
+            )
+        }
+    }
+
+    /** Selects the block header specifically (for block-level comments). */
+    fun selectBlockHeader(blockId: String) {
+        _uiState.update {
+            it.copy(
+                selectedBlockId = blockId,
+                selectedInstructionOffset = null,
+                isBlockHeaderSelected = true,
+            )
+        }
     }
 
     fun selectInstruction(blockId: String, offset: Int) {
-        _uiState.update { it.copy(selectedBlockId = blockId, selectedInstructionOffset = offset) }
+        _uiState.update {
+            it.copy(
+                selectedBlockId = blockId,
+                selectedInstructionOffset = offset,
+                isBlockHeaderSelected = false,
+            )
+        }
+    }
+
+    /**
+     * Adds or updates a comment on a block header or instruction.
+     *
+     * @param blockId The target block
+     * @param instructionOffset The instruction offset, or `null` for a block-level comment
+     * @param text The comment text; if blank, the comment is removed
+     */
+    fun addComment(blockId: String, instructionOffset: Int?, text: String) {
+        _uiState.update { state ->
+            val blockComments = state.comments[blockId]?.toMutableMap() ?: mutableMapOf()
+            if (text.isBlank()) {
+                blockComments.remove(instructionOffset)
+            } else {
+                blockComments[instructionOffset] = text
+            }
+            val newComments = if (blockComments.isEmpty()) {
+                state.comments - blockId
+            } else {
+                state.comments + (blockId to blockComments)
+            }
+            state.copy(comments = newComments)
+        }
+        // Re-layout since block sizes may have changed
+        recomputeLayout()
+    }
+
+    /**
+     * Recomputes the graph layout using the current CFG and comments.
+     * Called after comments change to update block sizes and edge routing.
+     */
+    private fun recomputeLayout() {
+        val cfg = _uiState.value.cfg ?: return
+        val comments = _uiState.value.comments
+
+        viewModelScope.launch(Dispatchers.Default) {
+            runCatching {
+                layoutEngine.layout(
+                    nodes = cfg.blocks.map { it.id to it },
+                    edges = cfg.edges.map { Triple(it.sourceId, it.targetId, it) },
+                    entryId = cfg.entryBlockId,
+                    nodeSize = { block -> computeBlockSize(block, comments[block.id]) },
+                )
+            }.onSuccess { layout ->
+                _uiState.update { it.copy(graphLayout = layout) }
+            }
+        }
     }
 
     fun clearError() {
@@ -190,11 +283,25 @@ class CfgViewModel(
     companion object {
         private const val BLOCK_WIDTH = 300f
         private const val HEADER_HEIGHT = 28f
+        private const val BLOCK_COMMENT_HEIGHT = 18f
         private const val INSTRUCTION_HEIGHT = 20f
         private const val PADDING = 12f
 
-        fun computeBlockSize(block: BasicBlock): Pair<Float, Float> {
-            val height = HEADER_HEIGHT + (block.instructions.size * INSTRUCTION_HEIGHT) + PADDING
+        /**
+         * Computes the pixel size for a basic block, accounting for any comments.
+         *
+         * @param block The basic block
+         * @param blockComments Comments for this block (key = instruction offset or null for block comment)
+         */
+        fun computeBlockSize(
+            block: BasicBlock,
+            blockComments: Map<Int?, String>? = null,
+        ): Pair<Float, Float> {
+            var height = HEADER_HEIGHT + (block.instructions.size * INSTRUCTION_HEIGHT) + PADDING
+            // Block-level comment adds an extra row
+            if (blockComments?.containsKey(null) == true) {
+                height += BLOCK_COMMENT_HEIGHT
+            }
             return Pair(BLOCK_WIDTH, height)
         }
     }
