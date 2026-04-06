@@ -1,6 +1,7 @@
 package com.bugdigger.sample;
 
 import com.bugdigger.sample.models.*;
+import com.bugdigger.sample.services.DataProcessor;
 import com.bugdigger.sample.services.UserService;
 import com.bugdigger.sample.services.ProductService;
 import com.bugdigger.sample.util.Logger;
@@ -17,6 +18,7 @@ public class SampleApplication {
 
     private final UserService userService;
     private final ProductService productService;
+    private final DataProcessor dataProcessor;
     private final Logger logger;
     private final ScheduledExecutorService scheduler;
     private volatile boolean running;
@@ -25,6 +27,7 @@ public class SampleApplication {
         this.logger = new Logger("SampleApp");
         this.userService = new UserService(logger);
         this.productService = new ProductService(logger);
+        this.dataProcessor = new DataProcessor(logger);
         this.scheduler = Executors.newScheduledThreadPool(2);
         this.running = false;
     }
@@ -36,6 +39,7 @@ public class SampleApplication {
         // Schedule periodic tasks
         scheduler.scheduleAtFixedRate(this::simulateUserActivity, 0, 2, TimeUnit.SECONDS);
         scheduler.scheduleAtFixedRate(this::simulateProductActivity, 1, 3, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(this::simulateDataProcessing, 2, 4, TimeUnit.SECONDS);
 
         logger.info("Sample Application started. Press Ctrl+C to stop.");
 
@@ -102,6 +106,22 @@ public class SampleApplication {
             logger.debug("Discounted price: " + discountedPrice);
         } catch (Exception e) {
             logger.warn("Product activity simulation error: " + e.getMessage());
+        }
+    }
+
+    private static final String[] SAMPLE_INPUTS = {
+        "HelloWorld", "Bytesight42", "CFG", "abc123XYZ", "ALLCAPS",
+        "", "lowercaseonly", "12345", "MiXeD!CaSe", null,
+    };
+
+    private void simulateDataProcessing() {
+        try {
+            String input = SAMPLE_INPUTS[(int) (Math.random() * SAMPLE_INPUTS.length)];
+            int iterations = 3 + (int) (Math.random() * 12);
+            String result = dataProcessor.processData(input, iterations);
+            logger.debug("Data processing result: " + result);
+        } catch (Exception e) {
+            logger.warn("Data processing error: " + e.getMessage());
         }
     }
 
