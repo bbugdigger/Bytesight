@@ -30,8 +30,6 @@ fun InspectorScreen(
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var isDropdownExpanded by remember { mutableStateOf(false) }
-
     LaunchedEffect(connectionKey) {
         viewModel.setConnectionKey(connectionKey)
     }
@@ -61,7 +59,7 @@ fun InspectorScreen(
             onSelectClass = viewModel::selectClass,
             onSelectMethod = viewModel::selectMethod,
             isLoading = uiState.isLoading || uiState.isLoadingClasses,
-            onDropdownExpandedChange = { isDropdownExpanded = it },
+            onDropdownExpandedChange = {},
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -75,7 +73,6 @@ fun InspectorScreen(
             DecompiledPanel(
                 source = uiState.decompiledSource,
                 isLoading = uiState.isLoading,
-                isSwingVisible = !isDropdownExpanded,
                 modifier = Modifier.weight(1f),
             )
 
@@ -432,7 +429,6 @@ private fun InstructionRow(
 private fun DecompiledPanel(
     source: String?,
     isLoading: Boolean,
-    isSwingVisible: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -465,12 +461,10 @@ private fun DecompiledPanel(
                     }
                 }
                 else -> {
-                    if (isSwingVisible) {
-                        CodeViewer(
-                            code = source,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
+                    CodeViewer(
+                        code = source,
+                        modifier = Modifier.fillMaxSize(),
+                    )
                 }
             }
         }

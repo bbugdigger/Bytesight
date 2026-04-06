@@ -29,9 +29,6 @@ koin = "4.0.0"
 slf4j = "2.0.16"
 logback = "1.5.12"
 
-# UI Components
-rsyntaxtextarea = "3.5.3"
-
 # Testing
 junit5 = "5.11.3"
 mockk = "1.13.13"
@@ -78,9 +75,6 @@ koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
 # Logging
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
-
-# UI Components
-rsyntaxtextarea = { module = "com.fifesoft:rsyntaxtextarea", version.ref = "rsyntaxtextarea" }
 
 # Testing
 junit5-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit5" }

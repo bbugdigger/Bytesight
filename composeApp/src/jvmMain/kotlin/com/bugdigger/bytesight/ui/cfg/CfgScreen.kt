@@ -46,8 +46,6 @@ fun CfgScreen(
     var commentTargetBlockId by remember { mutableStateOf<String?>(null) }
     var commentTargetOffset by remember { mutableStateOf<Int?>(null) }
     var commentInitialText by remember { mutableStateOf("") }
-    var isDropdownExpanded by remember { mutableStateOf(false) }
-
     LaunchedEffect(connectionKey) {
         viewModel.setConnectionKey(connectionKey)
     }
@@ -89,7 +87,7 @@ fun CfgScreen(
                 onSelectClass = viewModel::selectClass,
                 onSelectMethod = viewModel::selectMethod,
                 isLoading = uiState.isLoading || uiState.isLoadingClasses,
-                onDropdownExpandedChange = { isDropdownExpanded = it },
+                onDropdownExpandedChange = {},
             )
         }
 
@@ -104,7 +102,6 @@ fun CfgScreen(
             DecompiledPanel(
                 source = uiState.decompiledSource,
                 isLoading = uiState.isLoading,
-                isSwingVisible = !isDropdownExpanded && !showCommentDialog,
                 modifier = Modifier.weight(1f),
             )
 
@@ -500,7 +497,6 @@ private fun LegendItem(label: String, color: Color) {
 private fun DecompiledPanel(
     source: String?,
     isLoading: Boolean,
-    isSwingVisible: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -528,15 +524,11 @@ private fun DecompiledPanel(
                 }
 
                 source != null -> {
-                    if (isSwingVisible) {
-                        CodeViewer(
-                            code = source,
-                            language = "java",
-                            modifier = Modifier.weight(1f).fillMaxWidth(),
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
+                    CodeViewer(
+                        code = source,
+                        language = "java",
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                    )
                 }
 
                 else -> {

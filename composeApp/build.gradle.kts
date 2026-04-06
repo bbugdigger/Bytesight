@@ -39,9 +39,6 @@ kotlin {
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
 
-            // UI Components - RSyntaxTextArea for code editor
-            implementation(libs.rsyntaxtextarea)
-
             // Logging
             implementation(libs.slf4j.api)
             implementation(libs.logback.classic)
