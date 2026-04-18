@@ -2,6 +2,7 @@ package com.bugdigger.sample;
 
 import com.bugdigger.sample.models.*;
 import com.bugdigger.sample.services.DataProcessor;
+import com.bugdigger.sample.services.HeapDemoData;
 import com.bugdigger.sample.services.UserService;
 import com.bugdigger.sample.services.ProductService;
 import com.bugdigger.sample.util.Logger;
@@ -19,6 +20,7 @@ public class SampleApplication {
     private final UserService userService;
     private final ProductService productService;
     private final DataProcessor dataProcessor;
+    private final HeapDemoData heapDemoData;
     private final Logger logger;
     private final ScheduledExecutorService scheduler;
     private volatile boolean running;
@@ -28,6 +30,7 @@ public class SampleApplication {
         this.userService = new UserService(logger);
         this.productService = new ProductService(logger);
         this.dataProcessor = new DataProcessor(logger);
+        this.heapDemoData = new HeapDemoData(logger);
         this.scheduler = Executors.newScheduledThreadPool(2);
         this.running = false;
     }
@@ -35,6 +38,9 @@ public class SampleApplication {
     public void start() {
         logger.info("Starting Sample Application...");
         running = true;
+
+        // Populate heap with demo objects for heap inspection testing
+        heapDemoData.populate();
 
         // Schedule periodic tasks
         scheduler.scheduleAtFixedRate(this::simulateUserActivity, 0, 2, TimeUnit.SECONDS);

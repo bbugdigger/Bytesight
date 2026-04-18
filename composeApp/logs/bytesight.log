@@ -312,3 +312,41 @@
 2026-04-18 15:17:44.625 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/DataProcessor
 2026-04-18 15:17:44.626 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
 2026-04-18 15:17:44.628 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished reading class: com.bugdigger.sample.services.DataProcessor
+2026-04-18 15:30:11.225 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Attaching to JVM process: 80004 on port 50051
+2026-04-18 15:30:11.226 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Found agent JAR: C:/TheFactory/Bytesight/composeApp/../agent/build/libs/agent-1.0.0-agent.jar
+2026-04-18 15:30:13.295 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Agent successfully attached to 80004
+2026-04-18 15:30:13.589 [DefaultDispatcher-worker-3] INFO  c.b.bytesight.service.AgentClient - Connected to agent: version=1.0.0, target PID=80004
+2026-04-18 15:30:16.350 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loaded 3 plugins
+2026-04-18 15:30:16.380 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - JVM info: Eclipse Adoptium - 17.0.17 - 17.0.17+10
+2026-04-18 15:30:16.381 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Scanning classes from InMemorySource
+2026-04-18 15:30:16.382 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loading Class: com/bugdigger/sample/services/ProductService from InMemorySource
+2026-04-18 15:30:16.394 [pool-3-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Decompiling class: com.bugdigger.sample.services.ProductService
+2026-04-18 15:30:16.493 [pool-3-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished decompiling class: com.bugdigger.sample.services.ProductService
+2026-04-18 15:30:16.498 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Reading class: com.bugdigger.sample.services.ProductService
+2026-04-18 15:30:16.502 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService
+2026-04-18 15:30:16.511 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_9_204
+2026-04-18 15:30:16.511 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 15:30:16.513 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_2_87
+2026-04-18 15:30:16.513 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 15:30:16.513 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_6_112
+2026-04-18 15:30:16.514 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 15:30:16.515 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_4_112
+2026-04-18 15:30:16.515 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 15:30:16.515 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_5_126
+2026-04-18 15:30:16.515 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 15:30:16.515 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_3_109
+2026-04-18 15:30:16.516 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 15:30:16.516 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_4_112
+2026-04-18 15:30:16.516 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 15:30:16.516 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_7_178
+2026-04-18 15:30:16.516 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 15:30:16.516 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_4_112
+2026-04-18 15:30:16.516 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 15:30:16.516 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_4_112
+2026-04-18 15:30:16.516 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 15:30:16.516 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 15:30:16.522 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished reading class: com.bugdigger.sample.services.ProductService
+2026-04-18 15:35:39.010 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Attaching to JVM process: 47712 on port 50051
+2026-04-18 15:35:39.012 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Found agent JAR: C:/TheFactory/Bytesight/composeApp/../agent/build/libs/agent-1.0.0-agent.jar
+2026-04-18 15:35:41.074 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Agent successfully attached to 47712
+2026-04-18 15:35:41.363 [DefaultDispatcher-worker-3] INFO  c.b.bytesight.service.AgentClient - Connected to agent: version=1.0.0, target PID=47712

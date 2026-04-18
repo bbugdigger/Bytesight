@@ -108,7 +108,7 @@ private fun HeapHeader(
     onCapture: () -> Unit,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text("Heap", style = MaterialTheme.typography.headlineMedium)
+        Text("Heap", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
         Spacer(modifier = Modifier.width(16.dp))
 
         if (snapshot != null && snapshot.available) {
@@ -257,10 +257,9 @@ private fun HistogramRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(bgColor)
-                .clickable(onClick = onClick)
                 .pointerInput(Unit) {
                     detectTapGestures(
-                        onPress = { /* consume */ },
+                        onTap = { onClick() },
                         onLongPress = { showContextMenu = true },
                     )
                 }
