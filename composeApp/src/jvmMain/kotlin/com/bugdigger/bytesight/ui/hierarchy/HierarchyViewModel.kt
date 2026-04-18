@@ -3,6 +3,7 @@ package com.bugdigger.bytesight.ui.hierarchy
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bugdigger.bytesight.service.AgentClient
+import com.bugdigger.bytesight.service.RenameStore
 import com.bugdigger.protocol.ClassInfo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +26,8 @@ data class HierarchyUiState(
     val expandedNodes: Set<String> = emptySet(),
     val isLoading: Boolean = false,
     val error: String? = null,
+    /** Short-name → new-name map for display-layer renaming. */
+    val renames: Map<String, String> = emptyMap(),
 )
 
 /**
@@ -33,6 +36,7 @@ data class HierarchyUiState(
  */
 class HierarchyViewModel(
     private val agentClient: AgentClient,
+    private val renameStore: RenameStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HierarchyUiState())
@@ -40,6 +44,14 @@ class HierarchyViewModel(
 
     private var connectionKey: String? = null
     private var allClasses: List<ClassInfo> = emptyList()
+
+    init {
+        viewModelScope.launch {
+            renameStore.renameMap.collect { _ ->
+                _uiState.update { it.copy(renames = renameStore.shortNameMap()) }
+            }
+        }
+    }
 
     /**
      * Sets the connection key for agent communication.

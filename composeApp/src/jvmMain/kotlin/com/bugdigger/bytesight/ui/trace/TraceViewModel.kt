@@ -3,6 +3,7 @@ package com.bugdigger.bytesight.ui.trace
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bugdigger.bytesight.service.AgentClient
+import com.bugdigger.bytesight.service.RenameStore
 import com.bugdigger.protocol.ClassInfo
 import com.bugdigger.protocol.HookInfo
 import com.bugdigger.protocol.HookType
@@ -67,6 +68,7 @@ data class TraceUiState(
  */
 class TraceViewModel(
     private val agentClient: AgentClient,
+    private val renameStore: RenameStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TraceUiState())
@@ -339,12 +341,21 @@ class TraceViewModel(
         } else {
             "$callId-${eventType.name}"
         }
+
+        // Apply user renames to displayed class/method names
+        val shortNames = renameStore.shortNameMap()
+        val displayClassName = shortNames.entries
+            .fold(className) { name, (old, new) ->
+                name.replace(old, new)
+            }
+        val displayMethodName = shortNames[methodName] ?: methodName
+
         return TraceEventDisplay(
             id = uniqueId,
             timestamp = timestamp,
             threadName = threadName,
-            className = className,
-            methodName = methodName,
+            className = displayClassName,
+            methodName = displayMethodName,
             eventType = eventType,
             depth = depth,
             arguments = if (argumentsList.isNotEmpty()) {

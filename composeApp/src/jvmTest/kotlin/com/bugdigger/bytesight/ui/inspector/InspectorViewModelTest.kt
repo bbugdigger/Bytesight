@@ -2,6 +2,7 @@ package com.bugdigger.bytesight.ui.inspector
 
 import com.bugdigger.bytesight.service.AgentClient
 import com.bugdigger.bytesight.service.CommentStore
+import com.bugdigger.bytesight.service.RenameStore
 import com.bugdigger.core.analysis.BasicBlock
 import com.bugdigger.core.analysis.BlockType
 import com.bugdigger.core.analysis.Instruction
@@ -27,13 +28,15 @@ class InspectorViewModelTest {
     private lateinit var mockAgentClient: AgentClient
     private lateinit var mockDecompiler: Decompiler
     private lateinit var commentStore: CommentStore
+    private lateinit var renameStore: RenameStore
 
     @BeforeEach
     fun setup() {
         mockAgentClient = mockk(relaxed = true)
         mockDecompiler = mockk(relaxed = true)
         commentStore = CommentStore()
-        viewModel = InspectorViewModel(mockAgentClient, mockDecompiler, commentStore)
+        renameStore = RenameStore()
+        viewModel = InspectorViewModel(mockAgentClient, mockDecompiler, commentStore, renameStore)
     }
 
     @Nested

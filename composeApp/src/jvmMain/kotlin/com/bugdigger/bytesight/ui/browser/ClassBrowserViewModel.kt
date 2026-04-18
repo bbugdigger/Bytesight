@@ -3,6 +3,7 @@ package com.bugdigger.bytesight.ui.browser
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bugdigger.bytesight.service.AgentClient
+import com.bugdigger.bytesight.service.RenameStore
 import com.bugdigger.core.decompiler.Decompiler
 import com.bugdigger.core.decompiler.DecompilationResult
 import com.bugdigger.protocol.ClassInfo
@@ -26,6 +27,8 @@ data class ClassBrowserUiState(
     val bytecode: ByteArray? = null,
     val decompiled: String? = null,
     val decompilationWarnings: List<String> = emptyList(),
+    /** Decompiled source with user renames applied (display layer). */
+    val displayDecompiled: String? = null,
     val error: String? = null,
 )
 
@@ -36,12 +39,26 @@ data class ClassBrowserUiState(
 class ClassBrowserViewModel(
     private val agentClient: AgentClient,
     private val decompiler: Decompiler,
+    private val renameStore: RenameStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ClassBrowserUiState())
     val uiState: StateFlow<ClassBrowserUiState> = _uiState.asStateFlow()
 
     private var connectionKey: String? = null
+
+    init {
+        // Re-apply renames whenever the rename map changes
+        viewModelScope.launch {
+            renameStore.renameMap.collect { _ ->
+                _uiState.update { state ->
+                    state.copy(
+                        displayDecompiled = state.decompiled?.let { renameStore.applyToSource(it) },
+                    )
+                }
+            }
+        }
+    }
 
     /**
      * Sets the connection key to use for agent communication.
@@ -165,6 +182,7 @@ class ClassBrowserViewModel(
                     it.copy(
                         isLoadingBytecode = false,
                         decompiled = result.sourceCode,
+                        displayDecompiled = renameStore.applyToSource(result.sourceCode),
                         decompilationWarnings = result.warnings,
                     )
                 }

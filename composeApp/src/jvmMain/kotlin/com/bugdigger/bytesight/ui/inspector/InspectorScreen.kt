@@ -26,6 +26,7 @@ import androidx.compose.ui.zIndex
 import com.bugdigger.bytesight.ui.components.CodeViewer
 import com.bugdigger.bytesight.ui.components.CommentDialog
 import com.bugdigger.bytesight.ui.components.GraphView
+import com.bugdigger.bytesight.ui.components.RenameDialog
 import com.bugdigger.bytesight.ui.components.SelectorRow
 import com.bugdigger.core.analysis.BasicBlock
 import com.bugdigger.core.analysis.BlockType
@@ -175,8 +176,10 @@ fun InspectorScreen(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 DecompiledPanel(
-                    source = uiState.decompiledSource,
+                    source = uiState.displaySource ?: uiState.decompiledSource,
                     isLoading = uiState.isLoading,
+                    renamedSymbols = uiState.renamedSymbols,
+                    onRenameConfirm = { shortName, newName -> viewModel.renameSymbol(shortName, newName) },
                     modifier = Modifier.weight(1f),
                 )
 
@@ -654,8 +657,12 @@ private fun LegendItem(label: String, color: Color) {
 private fun DecompiledPanel(
     source: String?,
     isLoading: Boolean,
+    renamedSymbols: Map<String, String> = emptyMap(),
+    onRenameConfirm: ((String, String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
+    var renameTarget by remember { mutableStateOf<String?>(null) }
+
     Card(
         modifier = modifier.fillMaxHeight(),
         colors = CardDefaults.cardColors(
@@ -689,10 +696,25 @@ private fun DecompiledPanel(
                     CodeViewer(
                         code = source,
                         modifier = Modifier.fillMaxSize(),
+                        renamedSymbols = renamedSymbols,
+                        onRenameRequest = if (onRenameConfirm != null) {
+                            { shortName -> renameTarget = shortName }
+                        } else null,
                     )
                 }
             }
         }
+    }
+
+    if (renameTarget != null && onRenameConfirm != null) {
+        RenameDialog(
+            currentName = renameTarget!!,
+            onConfirm = { newName ->
+                onRenameConfirm(renameTarget!!, newName)
+                renameTarget = null
+            },
+            onDismiss = { renameTarget = null },
+        )
     }
 }
 

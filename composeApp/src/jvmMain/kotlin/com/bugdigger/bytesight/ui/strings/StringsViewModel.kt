@@ -3,6 +3,7 @@ package com.bugdigger.bytesight.ui.strings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bugdigger.bytesight.service.AgentClient
+import com.bugdigger.bytesight.service.RenameStore
 import com.bugdigger.core.analysis.ConstantExtractor
 import com.bugdigger.core.analysis.ConstantType
 import com.bugdigger.core.analysis.ExtractedConstant
@@ -27,6 +28,8 @@ data class StringsUiState(
     val totalClasses: Int = 0,
     val processedClasses: Int = 0,
     val error: String? = null,
+    /** Short-name → new-name map for display-layer renaming. */
+    val renames: Map<String, String> = emptyMap(),
 )
 
 /**
@@ -35,6 +38,7 @@ data class StringsUiState(
  */
 class StringsViewModel(
     private val agentClient: AgentClient,
+    private val renameStore: RenameStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(StringsUiState())
@@ -42,6 +46,14 @@ class StringsViewModel(
 
     private val extractor = ConstantExtractor()
     private var connectionKey: String? = null
+
+    init {
+        viewModelScope.launch {
+            renameStore.renameMap.collect { _ ->
+                _uiState.update { it.copy(renames = renameStore.shortNameMap()) }
+            }
+        }
+    }
 
     /**
      * Sets the connection key for agent communication.

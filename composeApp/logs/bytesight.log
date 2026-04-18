@@ -350,3 +350,151 @@
 2026-04-18 15:35:39.012 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Found agent JAR: C:/TheFactory/Bytesight/composeApp/../agent/build/libs/agent-1.0.0-agent.jar
 2026-04-18 15:35:41.074 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Agent successfully attached to 47712
 2026-04-18 15:35:41.363 [DefaultDispatcher-worker-3] INFO  c.b.bytesight.service.AgentClient - Connected to agent: version=1.0.0, target PID=47712
+2026-04-18 17:18:48.680 [DefaultDispatcher-worker-1 @coroutine#1] INFO  c.b.bytesight.service.AgentClient - Connected to agent: version=1.0.0, target PID=66148
+2026-04-18 17:18:49.017 [DefaultDispatcher-worker-5 @coroutine#18] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loaded 3 plugins
+2026-04-18 17:18:49.054 [DefaultDispatcher-worker-5 @coroutine#18] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - JVM info: Eclipse Adoptium - 17.0.17 - 17.0.17+10
+2026-04-18 17:18:49.054 [DefaultDispatcher-worker-5 @coroutine#18] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Scanning classes from InMemorySource
+2026-04-18 17:18:49.057 [DefaultDispatcher-worker-5 @coroutine#18] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loading Class: com/bugdigger/sample/SampleApplication from InMemorySource
+2026-04-18 17:18:49.070 [pool-2-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Decompiling class: com.bugdigger.sample.SampleApplication
+2026-04-18 17:18:49.179 [pool-2-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished decompiling class: com.bugdigger.sample.SampleApplication
+2026-04-18 17:18:49.186 [pool-2-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Reading class: com.bugdigger.sample.SampleApplication
+2026-04-18 17:18:49.191 [pool-2-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/SampleApplication
+2026-04-18 17:18:49.196 [pool-2-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/SampleApplication##Lambda_0_73
+2026-04-18 17:18:49.197 [pool-2-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:18:49.197 [pool-2-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/SampleApplication##Lambda_1_73
+2026-04-18 17:18:49.197 [pool-2-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:18:49.197 [pool-2-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/SampleApplication##Lambda_2_73
+2026-04-18 17:18:49.197 [pool-2-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:18:49.197 [pool-2-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/SampleApplication##Lambda_3_73
+2026-04-18 17:18:49.198 [pool-2-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:18:49.207 [pool-2-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:18:49.210 [pool-2-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished reading class: com.bugdigger.sample.SampleApplication
+2026-04-18 17:18:49.217 [DefaultDispatcher-worker-5 @coroutine#20] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loaded 3 plugins
+2026-04-18 17:18:49.217 [DefaultDispatcher-worker-5 @coroutine#20] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - JVM info: Eclipse Adoptium - 17.0.17 - 17.0.17+10
+2026-04-18 17:18:49.217 [DefaultDispatcher-worker-5 @coroutine#20] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Scanning classes from InMemorySource
+2026-04-18 17:18:49.217 [DefaultDispatcher-worker-5 @coroutine#20] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loading Class: com/bugdigger/sample/services/UserService from InMemorySource
+2026-04-18 17:18:49.218 [DefaultDispatcher-worker-5 @coroutine#20] WARN  c.b.c.d.VineflowerDecompiler$VineflowerLogger - Nested class com/bugdigger/sample/services/UserService$UserStats missing!
+2026-04-18 17:18:49.219 [pool-3-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Decompiling class: com.bugdigger.sample.services.UserService
+2026-04-18 17:18:49.244 [pool-3-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished decompiling class: com.bugdigger.sample.services.UserService
+2026-04-18 17:18:49.247 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Reading class: com.bugdigger.sample.services.UserService
+2026-04-18 17:18:49.247 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService
+2026-04-18 17:18:49.249 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_2_71
+2026-04-18 17:18:49.249 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:18:49.249 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_3_85
+2026-04-18 17:18:49.249 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:18:49.251 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_6_134
+2026-04-18 17:18:49.251 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:18:49.251 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_6_134
+2026-04-18 17:18:49.252 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:18:49.252 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_7_141
+2026-04-18 17:18:49.252 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:18:49.252 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_8_141
+2026-04-18 17:18:49.252 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:18:49.253 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/UserService##Lambda_9_134
+2026-04-18 17:18:49.253 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:18:49.253 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:18:49.253 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished reading class: com.bugdigger.sample.services.UserService
+2026-04-18 17:18:49.258 [DefaultDispatcher-worker-5 @coroutine#22] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loaded 3 plugins
+2026-04-18 17:18:49.258 [DefaultDispatcher-worker-5 @coroutine#22] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - JVM info: Eclipse Adoptium - 17.0.17 - 17.0.17+10
+2026-04-18 17:18:49.258 [DefaultDispatcher-worker-5 @coroutine#22] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Scanning classes from InMemorySource
+2026-04-18 17:18:49.258 [DefaultDispatcher-worker-5 @coroutine#22] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loading Class: com/bugdigger/sample/models/Status from InMemorySource
+2026-04-18 17:18:49.259 [pool-4-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Decompiling class: com.bugdigger.sample.models.Status
+2026-04-18 17:18:49.269 [pool-4-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished decompiling class: com.bugdigger.sample.models.Status
+2026-04-18 17:18:49.269 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Reading class: com.bugdigger.sample.models.Status
+2026-04-18 17:18:49.270 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/models/Status
+2026-04-18 17:18:49.272 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:18:49.272 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished reading class: com.bugdigger.sample.models.Status
+2026-04-18 17:19:32.825 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Attaching to JVM process: 71176 on port 50051
+2026-04-18 17:19:32.827 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Found agent JAR: C:/TheFactory/Bytesight/composeApp/../agent/build/libs/agent-1.0.0-agent.jar
+2026-04-18 17:19:34.945 [DefaultDispatcher-worker-1] INFO  c.b.bytesight.service.AttachService - Agent successfully attached to 71176
+2026-04-18 17:19:35.256 [DefaultDispatcher-worker-3] INFO  c.b.bytesight.service.AgentClient - Connected to agent: version=1.0.0, target PID=71176
+2026-04-18 17:19:38.000 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loaded 3 plugins
+2026-04-18 17:19:38.033 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - JVM info: Eclipse Adoptium - 17.0.17 - 17.0.17+10
+2026-04-18 17:19:38.034 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Scanning classes from InMemorySource
+2026-04-18 17:19:38.035 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loading Class: com/bugdigger/sample/services/ProductService from InMemorySource
+2026-04-18 17:19:38.047 [pool-3-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Decompiling class: com.bugdigger.sample.services.ProductService
+2026-04-18 17:19:38.146 [pool-3-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished decompiling class: com.bugdigger.sample.services.ProductService
+2026-04-18 17:19:38.152 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Reading class: com.bugdigger.sample.services.ProductService
+2026-04-18 17:19:38.157 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService
+2026-04-18 17:19:38.167 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_4_112
+2026-04-18 17:19:38.167 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:19:38.167 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_6_112
+2026-04-18 17:19:38.167 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:19:38.169 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_2_87
+2026-04-18 17:19:38.170 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:19:38.170 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_3_109
+2026-04-18 17:19:38.170 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:19:38.170 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_4_112
+2026-04-18 17:19:38.170 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:19:38.171 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_5_126
+2026-04-18 17:19:38.171 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:19:38.171 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_4_112
+2026-04-18 17:19:38.171 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:19:38.171 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_7_178
+2026-04-18 17:19:38.171 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:19:38.172 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_4_112
+2026-04-18 17:19:38.172 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:19:38.173 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_9_204
+2026-04-18 17:19:38.173 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:19:38.173 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:19:38.178 [pool-3-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished reading class: com.bugdigger.sample.services.ProductService
+2026-04-18 17:19:44.770 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loaded 3 plugins
+2026-04-18 17:19:44.770 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - JVM info: Eclipse Adoptium - 17.0.17 - 17.0.17+10
+2026-04-18 17:19:44.770 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Scanning classes from InMemorySource
+2026-04-18 17:19:44.770 [DefaultDispatcher-worker-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loading Class: com/bugdigger/sample/services/ProductService from InMemorySource
+2026-04-18 17:19:44.771 [pool-4-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Decompiling class: com.bugdigger.sample.services.ProductService
+2026-04-18 17:19:44.800 [pool-4-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished decompiling class: com.bugdigger.sample.services.ProductService
+2026-04-18 17:19:44.800 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Reading class: com.bugdigger.sample.services.ProductService
+2026-04-18 17:19:44.801 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService
+2026-04-18 17:19:44.802 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_4_112
+2026-04-18 17:19:44.802 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:19:44.802 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_6_112
+2026-04-18 17:19:44.802 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:19:44.802 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_2_87
+2026-04-18 17:19:44.802 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:19:44.802 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_3_109
+2026-04-18 17:19:44.802 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:19:44.802 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_4_112
+2026-04-18 17:19:44.802 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:19:44.802 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_5_126
+2026-04-18 17:19:44.802 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:19:44.803 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_4_112
+2026-04-18 17:19:44.803 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:19:44.803 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_7_178
+2026-04-18 17:19:44.803 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:19:44.803 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_4_112
+2026-04-18 17:19:44.803 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:19:44.803 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_9_204
+2026-04-18 17:19:44.803 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:19:44.803 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:19:44.805 [pool-4-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished reading class: com.bugdigger.sample.services.ProductService
+2026-04-18 17:20:19.515 [DefaultDispatcher-worker-3] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loaded 3 plugins
+2026-04-18 17:20:19.516 [DefaultDispatcher-worker-3] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - JVM info: Eclipse Adoptium - 17.0.17 - 17.0.17+10
+2026-04-18 17:20:19.516 [DefaultDispatcher-worker-3] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Scanning classes from InMemorySource
+2026-04-18 17:20:19.516 [DefaultDispatcher-worker-3] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Loading Class: com/bugdigger/sample/services/ProductService from InMemorySource
+2026-04-18 17:20:19.517 [pool-5-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Decompiling class: com.bugdigger.sample.services.ProductService
+2026-04-18 17:20:19.540 [pool-5-thread-1] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished decompiling class: com.bugdigger.sample.services.ProductService
+2026-04-18 17:20:19.540 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Reading class: com.bugdigger.sample.services.ProductService
+2026-04-18 17:20:19.541 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService
+2026-04-18 17:20:19.542 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_4_112
+2026-04-18 17:20:19.542 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:20:19.542 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_6_112
+2026-04-18 17:20:19.542 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:20:19.542 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_2_87
+2026-04-18 17:20:19.542 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:20:19.542 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_3_109
+2026-04-18 17:20:19.542 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:20:19.542 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_4_112
+2026-04-18 17:20:19.542 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:20:19.543 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_5_126
+2026-04-18 17:20:19.543 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:20:19.543 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_4_112
+2026-04-18 17:20:19.543 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:20:19.543 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_7_178
+2026-04-18 17:20:19.543 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:20:19.543 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_4_112
+2026-04-18 17:20:19.543 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:20:19.544 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Writing class: com/bugdigger/sample/services/ProductService##Lambda_9_204
+2026-04-18 17:20:19.544 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:20:19.544 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished writing class
+2026-04-18 17:20:19.544 [pool-5-thread-2] DEBUG c.b.c.d.VineflowerDecompiler$VineflowerLogger - Finished reading class: com.bugdigger.sample.services.ProductService

@@ -3,6 +3,7 @@ package com.bugdigger.bytesight.di
 import com.bugdigger.bytesight.service.AgentClient
 import com.bugdigger.bytesight.service.AttachService
 import com.bugdigger.bytesight.service.CommentStore
+import com.bugdigger.bytesight.service.RenameStore
 import com.bugdigger.bytesight.ui.attach.AttachViewModel
 import com.bugdigger.bytesight.ui.browser.ClassBrowserViewModel
 import com.bugdigger.bytesight.ui.heap.HeapViewModel
@@ -26,6 +27,7 @@ val appModule = module {
     singleOf(::AttachService)
     singleOf(::AgentClient)
     singleOf(::CommentStore)
+    singleOf(::RenameStore)
 
     // Decompiler configuration
     single { DecompilerOptions() }

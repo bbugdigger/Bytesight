@@ -1,6 +1,7 @@
 package com.bugdigger.bytesight.ui.trace
 
 import com.bugdigger.bytesight.service.AgentClient
+import com.bugdigger.bytesight.service.RenameStore
 import com.bugdigger.protocol.HookType
 import io.mockk.mockk
 import org.junit.jupiter.api.BeforeEach
@@ -23,7 +24,7 @@ class TraceViewModelTest {
     @BeforeEach
     fun setup() {
         mockAgentClient = mockk(relaxed = true)
-        viewModel = TraceViewModel(mockAgentClient)
+        viewModel = TraceViewModel(mockAgentClient, RenameStore())
     }
 
     @Nested

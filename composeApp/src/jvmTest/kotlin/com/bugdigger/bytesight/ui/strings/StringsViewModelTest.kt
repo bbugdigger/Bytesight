@@ -1,6 +1,7 @@
 package com.bugdigger.bytesight.ui.strings
 
 import com.bugdigger.bytesight.service.AgentClient
+import com.bugdigger.bytesight.service.RenameStore
 import com.bugdigger.core.analysis.ConstantType
 import com.bugdigger.core.analysis.StringPattern
 import io.mockk.mockk
@@ -24,7 +25,7 @@ class StringsViewModelTest {
     @BeforeEach
     fun setup() {
         mockAgentClient = mockk(relaxed = true)
-        viewModel = StringsViewModel(mockAgentClient)
+        viewModel = StringsViewModel(mockAgentClient, RenameStore())
     }
 
     @Nested

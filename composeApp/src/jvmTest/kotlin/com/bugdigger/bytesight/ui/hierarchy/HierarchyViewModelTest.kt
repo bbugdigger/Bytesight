@@ -1,6 +1,7 @@
 package com.bugdigger.bytesight.ui.hierarchy
 
 import com.bugdigger.bytesight.service.AgentClient
+import com.bugdigger.bytesight.service.RenameStore
 import io.mockk.mockk
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -22,7 +23,7 @@ class HierarchyViewModelTest {
     @BeforeEach
     fun setup() {
         mockAgentClient = mockk(relaxed = true)
-        viewModel = HierarchyViewModel(mockAgentClient)
+        viewModel = HierarchyViewModel(mockAgentClient, RenameStore())
     }
 
     @Nested

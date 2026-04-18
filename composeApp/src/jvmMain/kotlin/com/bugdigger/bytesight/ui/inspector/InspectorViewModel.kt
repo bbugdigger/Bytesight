@@ -6,6 +6,7 @@ import com.bugdigger.bytesight.service.AgentClient
 import com.bugdigger.bytesight.service.CommentStore
 import com.bugdigger.bytesight.service.MethodComments
 import com.bugdigger.bytesight.service.MethodKey
+import com.bugdigger.bytesight.service.RenameStore
 import com.bugdigger.bytesight.ui.components.GraphLayout
 import com.bugdigger.bytesight.ui.components.SugiyamaLayout
 import com.bugdigger.core.analysis.BasicBlock
@@ -40,6 +41,8 @@ data class InspectorUiState(
     val selectedMethod: DisassembledMethod? = null,
     val selectedInstruction: Instruction? = null,
     val decompiledSource: String? = null,
+    val displaySource: String? = null,
+    val renamedSymbols: Map<String, String> = emptyMap(),
     val viewMode: ViewMode = ViewMode.LINEAR,
     val cfg: ControlFlowGraph? = null,
     val graphLayout: GraphLayout<BasicBlock, CfgEdge>? = null,
@@ -55,6 +58,7 @@ class InspectorViewModel(
     private val agentClient: AgentClient,
     private val decompiler: Decompiler,
     private val commentStore: CommentStore,
+    private val renameStore: RenameStore,
 ) : ViewModel() {
 
     private val _innerState = MutableStateFlow(InspectorUiState())
@@ -79,6 +83,21 @@ class InspectorViewModel(
                     _innerState.update { it.copy(methodComments = comments) }
                 }
                 if (current.cfg != null) recomputeLayout()
+            }
+        }
+
+        // Mirror rename store into uiState and re-apply renames to decompiled source.
+        viewModelScope.launch {
+            renameStore.renameMap.collect { renames ->
+                val current = _innerState.value
+                val shortNames = renameStore.shortNameMap()
+                val displaySource = current.decompiledSource?.let { renameStore.applyToSource(it) }
+                _innerState.update {
+                    it.copy(
+                        displaySource = displaySource,
+                        renamedSymbols = shortNames,
+                    )
+                }
             }
         }
     }
@@ -160,6 +179,8 @@ class InspectorViewModel(
                         it.copy(
                             disassembledClass = disassembled,
                             decompiledSource = source,
+                            displaySource = renameStore.applyToSource(source),
+                            renamedSymbols = renameStore.shortNameMap(),
                             selectedMethod = firstMethod,
                             methodComments = comments,
                             isLoading = false,
@@ -318,6 +339,24 @@ class InspectorViewModel(
     fun addBlockComment(blockId: String, text: String) {
         val key = currentMethodKey(_innerState.value) ?: return
         commentStore.setBlockComment(key, blockId, text)
+    }
+
+    /**
+     * Rename a symbol identified by its short name as it appears in the decompiled source.
+     * Builds a fully-qualified name using the current class context and registers
+     * the rename in the [RenameStore].
+     */
+    fun renameSymbol(shortName: String, newName: String) {
+        val className = _innerState.value.selectedClassName ?: return
+        // Heuristic: if the short name matches the class simple name, rename the class.
+        // Otherwise assume it's a method/field of the current class.
+        val classSimpleName = className.substringAfterLast('.')
+        val fqn = if (shortName == classSimpleName) {
+            className
+        } else {
+            "$className#$shortName"
+        }
+        renameStore.rename(fqn, newName)
     }
 
     fun clearError() {
