@@ -1,6 +1,8 @@
 package com.bugdigger.agent;
 
 import com.bugdigger.agent.collector.ClassCollector;
+import com.bugdigger.agent.heap.HeapNativeLoader;
+import com.bugdigger.agent.heap.HeapSnapshotManager;
 import com.bugdigger.agent.server.AgentGrpcServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +22,7 @@ public class BytesightAgent {
     private static volatile Instrumentation instrumentation;
     private static volatile AgentGrpcServer grpcServer;
     private static volatile ClassCollector classCollector;
+    private static volatile HeapSnapshotManager heapSnapshotManager;
     private static volatile boolean initialized = false;
     
     /**
@@ -56,9 +59,18 @@ public class BytesightAgent {
             
             // Capture already loaded classes
             classCollector.captureLoadedClasses(instrumentation.getAllLoadedClasses());
-            
+
+            // Load native JVMTI heap helper. Failures are non-fatal — heap RPCs will
+            // return unavailable, but every other feature keeps working.
+            try {
+                HeapNativeLoader.load();
+            } catch (Throwable t) {
+                logger.warn("[Bytesight] Heap native loader threw: {}", t.getMessage());
+            }
+            heapSnapshotManager = new HeapSnapshotManager();
+
             // Start gRPC server
-            grpcServer = new AgentGrpcServer(config.getPort(), instrumentation, classCollector);
+            grpcServer = new AgentGrpcServer(config.getPort(), instrumentation, classCollector, heapSnapshotManager);
             grpcServer.start();
             
             initialized = true;
@@ -90,7 +102,11 @@ public class BytesightAgent {
     public static ClassCollector getClassCollector() {
         return classCollector;
     }
-    
+
+    public static HeapSnapshotManager getHeapSnapshotManager() {
+        return heapSnapshotManager;
+    }
+
     public static boolean isInitialized() {
         return initialized;
     }

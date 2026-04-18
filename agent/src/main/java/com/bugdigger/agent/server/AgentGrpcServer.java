@@ -1,6 +1,7 @@
 package com.bugdigger.agent.server;
 
 import com.bugdigger.agent.collector.ClassCollector;
+import com.bugdigger.agent.heap.HeapSnapshotManager;
 import com.bugdigger.agent.hook.HookManager;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
@@ -22,14 +23,16 @@ public class AgentGrpcServer {
     private final Server server;
     private final HookManager hookManager;
     
-    public AgentGrpcServer(int port, Instrumentation instrumentation, ClassCollector classCollector) {
+    public AgentGrpcServer(int port, Instrumentation instrumentation, ClassCollector classCollector,
+                           HeapSnapshotManager heapSnapshotManager) {
         this.port = port;
-        
+
         // Create the hook manager for method instrumentation
         this.hookManager = new HookManager(instrumentation);
-        
+
         // Create the service implementation
-        BytesightAgentService service = new BytesightAgentService(instrumentation, classCollector, hookManager);
+        BytesightAgentService service = new BytesightAgentService(instrumentation, classCollector, hookManager,
+                                                                  heapSnapshotManager);
         
         // Build the gRPC server
         this.server = ServerBuilder.forPort(port)

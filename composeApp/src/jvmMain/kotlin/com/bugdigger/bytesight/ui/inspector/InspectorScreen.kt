@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.flow.first
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -43,6 +44,8 @@ import com.bugdigger.core.analysis.InstructionCategory
 fun InspectorScreen(
     viewModel: InspectorViewModel,
     connectionKey: String,
+    pendingClassName: String? = null,
+    onPendingClassConsumed: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -54,6 +57,17 @@ fun InspectorScreen(
 
     LaunchedEffect(connectionKey) {
         viewModel.setConnectionKey(connectionKey)
+    }
+
+    // When navigating from Heap with a pending class, auto-select it once classes are loaded.
+    LaunchedEffect(pendingClassName) {
+        if (pendingClassName != null) {
+            // Wait for classes to be loaded (setConnectionKey triggers loadClasses)
+            snapshotFlow { viewModel.uiState.value.classes }
+                .first { it.isNotEmpty() }
+            viewModel.selectClass(pendingClassName)
+            onPendingClassConsumed()
+        }
     }
 
     // Dialog state for commenting.

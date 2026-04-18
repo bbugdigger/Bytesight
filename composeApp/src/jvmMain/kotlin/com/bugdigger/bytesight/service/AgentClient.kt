@@ -177,6 +177,111 @@ class AgentClient {
         }
     }
 
+    /**
+     * Captures a heap snapshot in the target JVM. Safepoint-heavy — the target pauses
+     * briefly while the native helper walks the heap.
+     */
+    suspend fun captureHeapSnapshot(connectionKey: String): Result<HeapSnapshotInfo> = withContext(Dispatchers.IO) {
+        withConnection(connectionKey) { stub ->
+            stub.captureHeapSnapshot(captureHeapSnapshotRequest { })
+        }
+    }
+
+    /**
+     * Fetches the class histogram for a previously captured snapshot.
+     */
+    suspend fun getClassHistogram(
+        connectionKey: String,
+        snapshotId: Long,
+        nameFilter: String = "",
+    ): Result<List<ClassHistogramEntry>> = withContext(Dispatchers.IO) {
+        withConnection(connectionKey) { stub ->
+            stub.getClassHistogram(getClassHistogramRequest {
+                this.snapshotId = snapshotId
+                this.nameFilter = nameFilter
+            }).toList()
+        }
+    }
+
+    /**
+     * Lists instances of a specific class in a snapshot.
+     */
+    suspend fun listInstances(
+        connectionKey: String,
+        snapshotId: Long,
+        className: String,
+        limit: Int = 500,
+    ): Result<List<InstanceSummary>> = withContext(Dispatchers.IO) {
+        withConnection(connectionKey) { stub ->
+            stub.listInstances(listInstancesRequest {
+                this.snapshotId = snapshotId
+                this.className = className
+                this.limit = limit
+            }).toList()
+        }
+    }
+
+    /**
+     * Gets detailed information about a single object by its JVMTI tag.
+     */
+    suspend fun getObject(
+        connectionKey: String,
+        snapshotId: Long,
+        tag: Long,
+    ): Result<ObjectDetail> = withContext(Dispatchers.IO) {
+        withConnection(connectionKey) { stub ->
+            stub.getObject(getObjectRequest {
+                this.snapshotId = snapshotId
+                this.tag = tag
+            })
+        }
+    }
+
+    /**
+     * Searches for values in a heap snapshot. Uses string-contains mode if
+     * [stringContains] is non-empty, otherwise field-equals mode.
+     */
+    suspend fun searchValues(
+        connectionKey: String,
+        snapshotId: Long,
+        stringContains: String = "",
+        fieldClassName: String = "",
+        fieldName: String = "",
+        fieldValue: String = "",
+        limit: Int = 500,
+    ): Result<List<ValueMatch>> = withContext(Dispatchers.IO) {
+        withConnection(connectionKey) { stub ->
+            stub.searchValues(searchValuesRequest {
+                this.snapshotId = snapshotId
+                this.stringContains = stringContains
+                this.fieldClassName = fieldClassName
+                this.fieldName = fieldName
+                this.fieldValue = fieldValue
+                this.limit = limit
+            }).toList()
+        }
+    }
+
+    /**
+     * Finds duplicate java.lang.String instances in the snapshot.
+     */
+    suspend fun findDuplicateStrings(
+        connectionKey: String,
+        snapshotId: Long,
+        minCount: Int = 2,
+        minLength: Int = 1,
+        limitGroups: Int = 100,
+    ): Result<List<DuplicateStringGroup>> = withContext(Dispatchers.IO) {
+        withConnection(connectionKey) { stub ->
+            stub.findDuplicateStrings(findDuplicateStringsRequest {
+                this.snapshotId = snapshotId
+                this.minCount = minCount
+                this.minLength = minLength
+                this.limitGroups = limitGroups
+            }).toList()
+        }
+    }
+
     private inline fun <T> withConnection(
         connectionKey: String,
         block: (BytesightAgentGrpcKt.BytesightAgentCoroutineStub) -> T,

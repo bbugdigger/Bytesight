@@ -2,6 +2,8 @@ package com.bugdigger.agent.server;
 
 import com.bugdigger.agent.collector.ClassCollector;
 import com.bugdigger.agent.collector.LoadedClassInfo;
+import com.bugdigger.agent.heap.HeapInspector;
+import com.bugdigger.agent.heap.HeapSnapshotManager;
 import com.bugdigger.agent.hook.HookManager;
 import com.bugdigger.agent.hook.TraceEventBuffer;
 import com.bugdigger.protocol.*;
@@ -13,6 +15,7 @@ import java.lang.instrument.Instrumentation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -26,13 +29,15 @@ public class BytesightAgentService extends BytesightAgentGrpc.BytesightAgentImpl
     private final Instrumentation instrumentation;
     private final ClassCollector classCollector;
     private final HookManager hookManager;
+    private final HeapSnapshotManager heapSnapshotManager;
     private final long startTime;
-    
+
     public BytesightAgentService(Instrumentation instrumentation, ClassCollector classCollector,
-                                 HookManager hookManager) {
+                                 HookManager hookManager, HeapSnapshotManager heapSnapshotManager) {
         this.instrumentation = instrumentation;
         this.classCollector = classCollector;
         this.hookManager = hookManager;
+        this.heapSnapshotManager = heapSnapshotManager;
         this.startTime = System.currentTimeMillis();
     }
     
@@ -256,7 +261,242 @@ public class BytesightAgentService extends BytesightAgentGrpc.BytesightAgentImpl
         // to properly unregister the listener.
         logger.info("Trace event subscriber registered");
     }
-    
+
+    // ========== Heap Inspection ==========
+
+    @Override
+    public void captureHeapSnapshot(CaptureHeapSnapshotRequest request,
+                                    StreamObserver<HeapSnapshotInfo> responseObserver) {
+        logger.info("captureHeapSnapshot called");
+
+        if (heapSnapshotManager == null || !heapSnapshotManager.isAvailable()) {
+            String err = heapSnapshotManager == null
+                ? "Heap snapshot manager not initialized"
+                : heapSnapshotManager.lastError();
+            responseObserver.onNext(HeapSnapshotInfo.newBuilder()
+                .setAvailable(false)
+                .setError(err == null ? "" : err)
+                .build());
+            responseObserver.onCompleted();
+            return;
+        }
+
+        HeapInspector.NativeSnapshotInfo info = heapSnapshotManager.capture();
+        responseObserver.onNext(HeapSnapshotInfo.newBuilder()
+            .setSnapshotId(info.snapshotId)
+            .setObjectCount(info.objectCount)
+            .setTotalShallowBytes(info.totalShallowBytes)
+            .setCapturedAtMillis(info.capturedAtMillis)
+            .setAvailable(info.available)
+            .setError(info.error)
+            .build());
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void getClassHistogram(GetClassHistogramRequest request,
+                                  StreamObserver<ClassHistogramEntry> responseObserver) {
+        long snapshotId = request.getSnapshotId();
+        String filter = request.getNameFilter();
+        logger.debug("getClassHistogram called snapshot={} filter='{}'", snapshotId, filter);
+
+        if (heapSnapshotManager == null || !heapSnapshotManager.isAvailable()) {
+            responseObserver.onCompleted();
+            return;
+        }
+
+        List<Object[]> rows = heapSnapshotManager.getHistogram(snapshotId, filter);
+        for (Object[] row : rows) {
+            String className = (String) row[0];
+            long count = ((Number) row[1]).longValue();
+            long bytes = ((Number) row[2]).longValue();
+            responseObserver.onNext(ClassHistogramEntry.newBuilder()
+                .setClassName(className)
+                .setInstanceCount(count)
+                .setShallowBytes(bytes)
+                .build());
+        }
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void listInstances(ListInstancesRequest request,
+                              StreamObserver<InstanceSummary> responseObserver) {
+        long snapshotId = request.getSnapshotId();
+        String className = request.getClassName();
+        int limit = request.getLimit();
+        logger.debug("listInstances called snapshot={} class='{}' limit={}", snapshotId, className, limit);
+
+        if (heapSnapshotManager == null || !heapSnapshotManager.isAvailable()) {
+            responseObserver.onCompleted();
+            return;
+        }
+
+        List<Object[]> rows = heapSnapshotManager.listInstances(snapshotId, className, limit);
+        for (Object[] row : rows) {
+            long tag = ((Number) row[0]).longValue();
+            String clsName = (String) row[1];
+            long bytes = ((Number) row[2]).longValue();
+            String preview = (String) row[3];
+            responseObserver.onNext(InstanceSummary.newBuilder()
+                .setTag(tag)
+                .setClassName(clsName)
+                .setShallowBytes(bytes)
+                .setPreview(preview != null ? preview : "")
+                .build());
+        }
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void getObject(GetObjectRequest request,
+                          StreamObserver<ObjectDetail> responseObserver) {
+        long snapshotId = request.getSnapshotId();
+        long tag = request.getTag();
+        logger.debug("getObject called snapshot={} tag={}", snapshotId, tag);
+
+        if (heapSnapshotManager == null || !heapSnapshotManager.isAvailable()) {
+            responseObserver.onNext(ObjectDetail.newBuilder()
+                .setTag(tag)
+                .setFound(false)
+                .setError("Heap helper unavailable")
+                .build());
+            responseObserver.onCompleted();
+            return;
+        }
+
+        HeapInspector.NativeObjectDetail detail = heapSnapshotManager.getObject(snapshotId, tag);
+        ObjectDetail.Builder builder = ObjectDetail.newBuilder()
+            .setTag(detail.tag)
+            .setClassName(detail.className)
+            .setShallowBytes(detail.shallowBytes)
+            .setFound(detail.found)
+            .setError(detail.error);
+
+        // Convert fields
+        for (Object[] fieldRow : detail.fields) {
+            String name = (String) fieldRow[0];
+            String declaredType = (String) fieldRow[1];
+            int kindOrdinal = ((Number) fieldRow[2]).intValue();
+            long intValue = ((Number) fieldRow[3]).longValue();
+            double doubleValue = ((Number) fieldRow[4]).doubleValue();
+            String stringValue = (String) fieldRow[5];
+            long refTag = ((Number) fieldRow[6]).longValue();
+            boolean isStatic = (Boolean) fieldRow[7];
+            boolean isNull = (Boolean) fieldRow[8];
+
+            FieldKind kind;
+            switch (kindOrdinal) {
+                case 1: kind = FieldKind.FIELD_KIND_INT; break;
+                case 2: kind = FieldKind.FIELD_KIND_DOUBLE; break;
+                case 3: kind = FieldKind.FIELD_KIND_STRING; break;
+                case 4: kind = FieldKind.FIELD_KIND_REF; break;
+                case 5: kind = FieldKind.FIELD_KIND_NULL; break;
+                default: kind = FieldKind.FIELD_KIND_UNSPECIFIED; break;
+            }
+
+            builder.addFields(FieldValue.newBuilder()
+                .setName(name != null ? name : "")
+                .setDeclaredType(declaredType != null ? declaredType : "")
+                .setKind(kind)
+                .setIntValue(intValue)
+                .setDoubleValue(doubleValue)
+                .setStringValue(stringValue != null ? stringValue : "")
+                .setRefTag(refTag)
+                .setIsStatic(isStatic)
+                .setIsNull(isNull)
+                .build());
+        }
+
+        // Convert outgoing refs
+        for (Object[] refRow : detail.outgoingRefs) {
+            String fieldName = (String) refRow[0];
+            long targetTag = ((Number) refRow[1]).longValue();
+            String targetClassName = (String) refRow[2];
+
+            builder.addOutgoingRefs(ReferenceEdge.newBuilder()
+                .setFieldName(fieldName != null ? fieldName : "")
+                .setTargetTag(targetTag)
+                .setTargetClassName(targetClassName != null ? targetClassName : "")
+                .build());
+        }
+
+        responseObserver.onNext(builder.build());
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void searchValues(SearchValuesRequest request,
+                             StreamObserver<ValueMatch> responseObserver) {
+        long snapshotId = request.getSnapshotId();
+        logger.debug("searchValues called snapshot={} stringContains='{}' fieldClass='{}' fieldName='{}'",
+            snapshotId, request.getStringContains(), request.getFieldClassName(), request.getFieldName());
+
+        if (heapSnapshotManager == null || !heapSnapshotManager.isAvailable()) {
+            responseObserver.onCompleted();
+            return;
+        }
+
+        List<Object[]> rows = heapSnapshotManager.searchValues(
+            snapshotId,
+            request.getStringContains(),
+            request.getFieldClassName(),
+            request.getFieldName(),
+            request.getFieldValue(),
+            request.getLimit());
+
+        for (Object[] row : rows) {
+            long tag = ((Number) row[0]).longValue();
+            String className = (String) row[1];
+            String matchedField = (String) row[2];
+            String matchedValue = (String) row[3];
+            responseObserver.onNext(ValueMatch.newBuilder()
+                .setTag(tag)
+                .setClassName(className != null ? className : "")
+                .setMatchedField(matchedField != null ? matchedField : "")
+                .setMatchedValue(matchedValue != null ? matchedValue : "")
+                .build());
+        }
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void findDuplicateStrings(FindDuplicateStringsRequest request,
+                                     StreamObserver<DuplicateStringGroup> responseObserver) {
+        long snapshotId = request.getSnapshotId();
+        logger.debug("findDuplicateStrings called snapshot={} minCount={} minLength={}",
+            snapshotId, request.getMinCount(), request.getMinLength());
+
+        if (heapSnapshotManager == null || !heapSnapshotManager.isAvailable()) {
+            responseObserver.onCompleted();
+            return;
+        }
+
+        List<Object[]> rows = heapSnapshotManager.findDuplicateStrings(
+            snapshotId, request.getMinCount(), request.getMinLength(), request.getLimitGroups());
+
+        for (Object[] row : rows) {
+            String value = (String) row[0];
+            int count = ((Number) row[1]).intValue();
+            long wastedBytes = ((Number) row[2]).longValue();
+            Object[] tagObjs = (Object[]) row[3];
+
+            DuplicateStringGroup.Builder builder = DuplicateStringGroup.newBuilder()
+                .setValue(value != null ? value : "")
+                .setCount(count)
+                .setWastedBytes(wastedBytes);
+
+            if (tagObjs != null) {
+                for (Object tagObj : tagObjs) {
+                    builder.addExampleTags(((Number) tagObj).longValue());
+                }
+            }
+
+            responseObserver.onNext(builder.build());
+        }
+        responseObserver.onCompleted();
+    }
+
     // ========== Helper Methods ==========
     
     private ClassInfo buildClassInfo(LoadedClassInfo info) {

@@ -10,6 +10,7 @@ enum class Screen(val title: String, val icon: String) {
     INSPECTOR("Inspector", "🔍"),
     STRINGS("Strings", "📝"),
     TRACE("Trace", "📊"),
+    HEAP("Heap", "💾"),
     SETTINGS("Settings", "⚙"),
 }
 
@@ -20,4 +21,6 @@ data class NavigationState(
     val currentScreen: Screen = Screen.ATTACH,
     val isConnected: Boolean = false,
     val connectionKey: String? = null,
+    /** When non-null, the Inspector screen should auto-select this class and clear the field. */
+    val pendingInspectorClass: String? = null,
 )

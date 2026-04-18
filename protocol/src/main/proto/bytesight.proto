@@ -29,6 +29,14 @@ service BytesightAgent {
     rpc StartTracing(StartTracingRequest) returns (TracingResponse);
     rpc StopTracing(StopTracingRequest) returns (TracingResponse);
     rpc SubscribeMethodTraces(SubscribeRequest) returns (stream MethodTraceEvent);
+
+    // Heap Inspection
+    rpc CaptureHeapSnapshot(CaptureHeapSnapshotRequest) returns (HeapSnapshotInfo);
+    rpc GetClassHistogram(GetClassHistogramRequest) returns (stream ClassHistogramEntry);
+    rpc ListInstances(ListInstancesRequest) returns (stream InstanceSummary);
+    rpc GetObject(GetObjectRequest) returns (ObjectDetail);
+    rpc SearchValues(SearchValuesRequest) returns (stream ValueMatch);
+    rpc FindDuplicateStrings(FindDuplicateStringsRequest) returns (stream DuplicateStringGroup);
 }
 
 // ============================================================================
@@ -249,4 +257,123 @@ message ArgumentValue {
     string value = 3;               // String representation
     bool is_null = 4;
     bool truncated = 5;             // True if value was truncated
+}
+
+// ============================================================================
+// Heap Inspection Messages
+// ============================================================================
+
+message CaptureHeapSnapshotRequest {}
+
+message HeapSnapshotInfo {
+    int64 snapshot_id = 1;
+    int64 object_count = 2;
+    int64 total_shallow_bytes = 3;
+    int64 captured_at_millis = 4;
+    bool available = 5;             // False if the native heap library failed to load
+    string error = 6;               // Populated when available=false
+}
+
+message GetClassHistogramRequest {
+    int64 snapshot_id = 1;
+    string name_filter = 2;         // Empty = all; matches fully-qualified class names (contains)
+}
+
+message ClassHistogramEntry {
+    string class_name = 1;
+    int64 instance_count = 2;
+    int64 shallow_bytes = 3;
+}
+
+message ListInstancesRequest {
+    int64 snapshot_id = 1;
+    string class_name = 2;          // Exact, fully-qualified class name
+    int32 limit = 3;                // 0 or negative means no limit
+}
+
+message InstanceSummary {
+    int64 tag = 1;
+    string class_name = 2;
+    int64 shallow_bytes = 3;
+    string preview = 4;             // Short, side-effect-free preview (e.g. String value, "Class@tag")
+}
+
+message GetObjectRequest {
+    int64 snapshot_id = 1;
+    int64 tag = 2;
+}
+
+message ObjectDetail {
+    int64 tag = 1;
+    string class_name = 2;
+    int64 shallow_bytes = 3;
+    bool found = 4;                 // False if the tag is unknown or the object is gone
+    string error = 5;
+    repeated FieldValue fields = 6;
+    repeated ReferenceEdge outgoing_refs = 7;
+}
+
+message FieldValue {
+    string name = 1;
+    string declared_type = 2;       // Java name (e.g. "java.lang.String", "int", "byte[]")
+    FieldKind kind = 3;
+    int64 int_value = 4;            // byte/short/int/long/char/bool via widening
+    double double_value = 5;        // float/double
+    string string_value = 6;        // For strings + toString-free previews
+    int64 ref_tag = 7;              // 0 means null
+    bool is_static = 8;
+    bool is_null = 9;
+}
+
+enum FieldKind {
+    FIELD_KIND_UNSPECIFIED = 0;
+    FIELD_KIND_INT = 1;             // byte/short/int/long/char/bool
+    FIELD_KIND_DOUBLE = 2;          // float/double
+    FIELD_KIND_STRING = 3;
+    FIELD_KIND_REF = 4;
+    FIELD_KIND_NULL = 5;
+}
+
+message ReferenceEdge {
+    string field_name = 1;          // Name of the field holding the reference (or "[idx]" for arrays)
+    int64 target_tag = 2;
+    string target_class_name = 3;
+}
+
+// ============================================================================
+// Value Search
+// ============================================================================
+
+message SearchValuesRequest {
+    int64 snapshot_id = 1;
+    string string_contains = 2;     // Substring match against String values (empty = unused)
+    string field_class_name = 3;    // For field-equals mode: fully-qualified class name
+    string field_name = 4;          // For field-equals mode: field name
+    string field_value = 5;         // For field-equals mode: value as string (agent parses per type)
+    int32 limit = 6;                // Max results (0 = default 500)
+}
+
+message ValueMatch {
+    int64 tag = 1;
+    string class_name = 2;
+    string matched_field = 3;       // Empty for string substring match
+    string matched_value = 4;       // The actual value that matched (truncated)
+}
+
+// ============================================================================
+// Duplicate Strings
+// ============================================================================
+
+message FindDuplicateStringsRequest {
+    int64 snapshot_id = 1;
+    int32 min_count = 2;            // Minimum duplication count (default 2)
+    int32 min_length = 3;           // Skip trivially short strings
+    int32 limit_groups = 4;         // Max groups to return (0 = default 100)
+}
+
+message DuplicateStringGroup {
+    string value = 1;               // The duplicated string content (truncated to 200 chars)
+    int32 count = 2;
+    int64 wasted_bytes = 3;         // (count - 1) * shallow_size
+    repeated int64 example_tags = 4; // Up to N sample tags for drill-down
 }

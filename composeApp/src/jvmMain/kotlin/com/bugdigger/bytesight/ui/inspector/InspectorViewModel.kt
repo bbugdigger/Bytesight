@@ -21,10 +21,8 @@ import com.bugdigger.core.decompiler.Decompiler
 import com.bugdigger.protocol.ClassInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -60,13 +58,7 @@ class InspectorViewModel(
 ) : ViewModel() {
 
     private val _innerState = MutableStateFlow(InspectorUiState())
-
-    val uiState: StateFlow<InspectorUiState> =
-        combine(_innerState, commentStore.state) { inner, store ->
-            val key = currentMethodKey(inner)
-            val comments = if (key != null) store[key] ?: MethodComments() else MethodComments()
-            inner.copy(methodComments = comments)
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, InspectorUiState())
+    val uiState: StateFlow<InspectorUiState> = _innerState.asStateFlow()
 
     private val disassembler = BytecodeDisassembler()
     private val cfgBuilder = CfgBuilder()
@@ -76,13 +68,17 @@ class InspectorViewModel(
     private var screenDensity: Float = 1f
 
     init {
-        // Re-layout the CFG when comments change for the currently-selected method,
-        // since block sizes depend on whether a block has a block-level comment.
+        // Mirror the comment store into uiState.methodComments for the current method,
+        // and re-layout the CFG when block-level comments change (block size depends on them).
         viewModelScope.launch {
-            commentStore.state.collect {
-                if (_innerState.value.cfg != null) {
-                    recomputeLayout()
+            commentStore.state.collect { store ->
+                val current = _innerState.value
+                val key = currentMethodKey(current)
+                val comments = if (key != null) store[key] ?: MethodComments() else MethodComments()
+                if (current.methodComments != comments) {
+                    _innerState.update { it.copy(methodComments = comments) }
                 }
+                if (current.cfg != null) recomputeLayout()
             }
         }
     }
@@ -136,6 +132,7 @@ class InspectorViewModel(
                 selectedBlockId = null,
                 selectedInstructionOffset = null,
                 isBlockHeaderSelected = false,
+                methodComments = MethodComments(),
                 isLoading = true,
                 error = null,
             )
@@ -155,12 +152,16 @@ class InspectorViewModel(
                     }
 
                     val firstMethod = disassembled?.methods?.firstOrNull()
+                    val comments = if (firstMethod != null) {
+                        commentStore.commentsFor(MethodKey(className, firstMethod.name, firstMethod.descriptor))
+                    } else MethodComments()
 
                     _innerState.update {
                         it.copy(
                             disassembledClass = disassembled,
                             decompiledSource = source,
                             selectedMethod = firstMethod,
+                            methodComments = comments,
                             isLoading = false,
                         )
                     }
@@ -181,9 +182,14 @@ class InspectorViewModel(
     }
 
     fun selectMethod(methodName: String, descriptor: String) {
-        val method = _innerState.value.disassembledClass?.methods?.find {
+        val state = _innerState.value
+        val method = state.disassembledClass?.methods?.find {
             it.name == methodName && it.descriptor == descriptor
         } ?: return
+        val className = state.selectedClassName
+        val comments = if (className != null) {
+            commentStore.commentsFor(MethodKey(className, methodName, descriptor))
+        } else MethodComments()
 
         _innerState.update {
             it.copy(
@@ -194,6 +200,7 @@ class InspectorViewModel(
                 selectedBlockId = null,
                 selectedInstructionOffset = null,
                 isBlockHeaderSelected = false,
+                methodComments = comments,
             )
         }
 

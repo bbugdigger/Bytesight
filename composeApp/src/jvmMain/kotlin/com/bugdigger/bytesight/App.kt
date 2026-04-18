@@ -10,6 +10,8 @@ import com.bugdigger.bytesight.ui.attach.AttachScreen
 import com.bugdigger.bytesight.ui.attach.AttachViewModel
 import com.bugdigger.bytesight.ui.browser.ClassBrowserScreen
 import com.bugdigger.bytesight.ui.browser.ClassBrowserViewModel
+import com.bugdigger.bytesight.ui.heap.HeapScreen
+import com.bugdigger.bytesight.ui.heap.HeapViewModel
 import com.bugdigger.bytesight.ui.hierarchy.HierarchyScreen
 import com.bugdigger.bytesight.ui.hierarchy.HierarchyViewModel
 import com.bugdigger.bytesight.ui.inspector.InspectorScreen
@@ -66,6 +68,15 @@ fun App() {
                         currentScreen = Screen.ATTACH,
                     )
                 },
+                onNavigateToInspector = { className ->
+                    navState = navState.copy(
+                        currentScreen = Screen.INSPECTOR,
+                        pendingInspectorClass = className,
+                    )
+                },
+                onClearPendingInspectorClass = {
+                    navState = navState.copy(pendingInspectorClass = null)
+                },
             )
         }
     }
@@ -79,6 +90,8 @@ private fun MainContent(
     navState: NavigationState,
     onConnected: (String) -> Unit,
     onDisconnected: () -> Unit,
+    onNavigateToInspector: (className: String) -> Unit,
+    onClearPendingInspectorClass: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (navState.currentScreen) {
@@ -122,6 +135,8 @@ private fun MainContent(
                 InspectorScreen(
                     viewModel = viewModel,
                     connectionKey = connectionKey,
+                    pendingClassName = navState.pendingInspectorClass,
+                    onPendingClassConsumed = onClearPendingInspectorClass,
                     modifier = modifier,
                 )
             }
@@ -146,6 +161,19 @@ private fun MainContent(
                 TraceScreen(
                     viewModel = viewModel,
                     connectionKey = connectionKey,
+                    modifier = modifier,
+                )
+            }
+        }
+
+        Screen.HEAP -> {
+            val connectionKey = navState.connectionKey
+            if (connectionKey != null) {
+                val viewModel: HeapViewModel = koinInject()
+                HeapScreen(
+                    viewModel = viewModel,
+                    connectionKey = connectionKey,
+                    onNavigateToInspector = onNavigateToInspector,
                     modifier = modifier,
                 )
             }
