@@ -34,7 +34,7 @@ fun Sidebar(
             val enabled = when (screen) {
                 Screen.ATTACH -> true
                 Screen.CLASS_BROWSER, Screen.TRACE,
-                Screen.HIERARCHY, Screen.INSPECTOR, Screen.CFG, Screen.STRINGS -> isConnected
+                Screen.HIERARCHY, Screen.INSPECTOR, Screen.STRINGS -> isConnected
                 Screen.SETTINGS -> true
             }
 

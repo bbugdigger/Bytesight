@@ -2,26 +2,42 @@ package com.bugdigger.bytesight.ui.inspector
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.input.key.*
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.bugdigger.bytesight.ui.components.CodeViewer
+import com.bugdigger.bytesight.ui.components.CommentDialog
+import com.bugdigger.bytesight.ui.components.GraphView
+import com.bugdigger.bytesight.ui.components.SelectorRow
+import com.bugdigger.core.analysis.BasicBlock
+import com.bugdigger.core.analysis.BlockType
+import com.bugdigger.core.analysis.CfgEdge
 import com.bugdigger.core.analysis.DisassembledMethod
+import com.bugdigger.core.analysis.EdgeType
 import com.bugdigger.core.analysis.Instruction
 import com.bugdigger.core.analysis.InstructionCategory
 
 /**
- * Screen for inspecting raw bytecode instructions alongside decompiled source.
+ * Screen for inspecting raw bytecode. Linear list by default; press TAB to toggle
+ * to the control-flow-graph view. Both views share the same class/method selector
+ * and commenting (press `/` with a selection to comment).
  */
 @Composable
 fun InspectorScreen(
@@ -30,253 +46,188 @@ fun InspectorScreen(
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    val density = LocalDensity.current.density
+    LaunchedEffect(density) {
+        viewModel.setDensity(density)
+    }
+
     LaunchedEffect(connectionKey) {
         viewModel.setConnectionKey(connectionKey)
     }
 
-    Column(
+    // Dialog state for commenting.
+    var showCommentDialog by remember { mutableStateOf(false) }
+    var commentIsBlock by remember { mutableStateOf(false) }
+    var commentTargetOffset by remember { mutableStateOf<Int?>(null) }
+    var commentTargetBlockId by remember { mutableStateOf<String?>(null) }
+    var commentInitialText by remember { mutableStateOf("") }
+
+    // Dropdown-open flag suppresses TAB/slash handling so typing in the class
+    // filter or navigating dropdown items with keys isn't hijacked.
+    var dropdownOpen by remember { mutableStateOf(false) }
+
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+
+    fun openInstructionCommentDialog(offset: Int) {
+        commentIsBlock = false
+        commentTargetBlockId = null
+        commentTargetOffset = offset
+        commentInitialText = uiState.methodComments.instructionLevel[offset] ?: ""
+        showCommentDialog = true
+    }
+
+    fun openBlockCommentDialog(blockId: String) {
+        commentIsBlock = true
+        commentTargetBlockId = blockId
+        commentTargetOffset = null
+        commentInitialText = uiState.methodComments.blockLevel[blockId] ?: ""
+        showCommentDialog = true
+    }
+
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .focusRequester(focusRequester)
+            .focusable()
+            .onKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown || dropdownOpen || showCommentDialog) {
+                    return@onKeyEvent false
+                }
+                when (event.key) {
+                    Key.Tab -> {
+                        viewModel.toggleViewMode()
+                        true
+                    }
+                    Key.Slash -> {
+                        if (uiState.viewMode == ViewMode.LINEAR) {
+                            val offset = uiState.selectedInstruction?.offset
+                            if (offset != null) {
+                                openInstructionCommentDialog(offset)
+                                true
+                            } else false
+                        } else {
+                            val blockId = uiState.selectedBlockId
+                            if (blockId != null) {
+                                if (uiState.isBlockHeaderSelected) {
+                                    openBlockCommentDialog(blockId)
+                                    true
+                                } else {
+                                    val offset = uiState.selectedInstructionOffset
+                                    if (offset != null) {
+                                        openInstructionCommentDialog(offset)
+                                        true
+                                    } else false
+                                }
+                            } else false
+                        }
+                    }
+                    else -> false
+                }
+            },
     ) {
-        // Header
-        InspectorHeader()
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Error display
-        uiState.error?.let { error ->
-            ErrorBanner(error = error, onDismiss = viewModel::clearError)
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        // Selectors row
-        SelectorRow(
-            classes = uiState.classes,
-            selectedClassName = uiState.selectedClassName,
-            methods = uiState.disassembledClass?.methods ?: emptyList(),
-            selectedMethod = uiState.selectedMethod,
-            onSelectClass = viewModel::selectClass,
-            onSelectMethod = viewModel::selectMethod,
-            isLoading = uiState.isLoading || uiState.isLoadingClasses,
-            onDropdownExpandedChange = {},
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Main content: decompiled on left, bytecode on right
-        Row(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
         ) {
-            // Decompiled source panel
-            DecompiledPanel(
-                source = uiState.decompiledSource,
-                isLoading = uiState.isLoading,
-                modifier = Modifier.weight(1f),
-            )
+            InspectorHeader(viewMode = uiState.viewMode)
 
-            // Bytecode panel
-            BytecodePanel(
-                method = uiState.selectedMethod,
-                selectedInstruction = uiState.selectedInstruction,
-                isLoading = uiState.isLoading,
-                onSelectInstruction = viewModel::selectInstruction,
-                modifier = Modifier.weight(1f),
-            )
-        }
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // Instruction detail panel
-        uiState.selectedInstruction?.let { instruction ->
-            Spacer(modifier = Modifier.height(8.dp))
-            InstructionDetailPanel(instruction = instruction)
+            uiState.error?.let { error ->
+                ErrorBanner(error = error, onDismiss = viewModel::clearError)
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            Box(modifier = Modifier.zIndex(1f)) {
+                SelectorRow(
+                    classes = uiState.classes,
+                    selectedClassName = uiState.selectedClassName,
+                    methods = uiState.disassembledClass?.methods ?: emptyList(),
+                    selectedMethod = uiState.selectedMethod,
+                    onSelectClass = viewModel::selectClass,
+                    onSelectMethod = viewModel::selectMethod,
+                    isLoading = uiState.isLoading || uiState.isLoadingClasses,
+                    onDropdownExpandedChange = { dropdownOpen = it },
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                DecompiledPanel(
+                    source = uiState.decompiledSource,
+                    isLoading = uiState.isLoading,
+                    modifier = Modifier.weight(1f),
+                )
+
+                when (uiState.viewMode) {
+                    ViewMode.LINEAR -> BytecodePanel(
+                        method = uiState.selectedMethod,
+                        selectedInstruction = uiState.selectedInstruction,
+                        instructionComments = uiState.methodComments.instructionLevel,
+                        isLoading = uiState.isLoading,
+                        onSelectInstruction = viewModel::selectInstruction,
+                        modifier = Modifier.weight(1f),
+                    )
+                    ViewMode.CFG -> CfgPanel(
+                        uiState = uiState,
+                        onBlockClick = viewModel::selectBlock,
+                        onBlockHeaderClick = viewModel::selectBlockHeader,
+                        onInstructionClick = viewModel::selectCfgInstruction,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+
+            if (uiState.viewMode == ViewMode.LINEAR) {
+                uiState.selectedInstruction?.let { instruction ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    InstructionDetailPanel(instruction = instruction)
+                }
+            }
         }
+    }
+
+    if (showCommentDialog) {
+        CommentDialog(
+            initialText = commentInitialText,
+            isBlockComment = commentIsBlock,
+            onConfirm = { text ->
+                if (commentIsBlock) {
+                    commentTargetBlockId?.let { viewModel.addBlockComment(it, text) }
+                } else {
+                    commentTargetOffset?.let { viewModel.addInstructionComment(it, text) }
+                }
+                showCommentDialog = false
+            },
+            onDismiss = { showCommentDialog = false },
+        )
     }
 }
 
 @Composable
-private fun InspectorHeader(modifier: Modifier = Modifier) {
+private fun InspectorHeader(viewMode: ViewMode, modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
         Text(
             text = "Bytecode Inspector",
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onSurface,
         )
+        val subtitle = when (viewMode) {
+            ViewMode.LINEAR -> "Linear view. Press TAB for control flow graph. Press / to comment on the selected instruction."
+            ViewMode.CFG -> "Control flow graph. Press TAB for linear view. Press / to comment on the selected block or instruction."
+        }
         Text(
-            text = "Inspect raw JVM bytecode instructions alongside decompiled source",
+            text = subtitle,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SelectorRow(
-    classes: List<com.bugdigger.protocol.ClassInfo>,
-    selectedClassName: String?,
-    methods: List<DisassembledMethod>,
-    selectedMethod: DisassembledMethod?,
-    onSelectClass: (String) -> Unit,
-    onSelectMethod: (String, String) -> Unit,
-    isLoading: Boolean,
-    onDropdownExpandedChange: (Boolean) -> Unit = {},
-    modifier: Modifier = Modifier,
-) {
-    var classExpanded by remember { mutableStateOf(false) }
-    var methodExpanded by remember { mutableStateOf(false) }
-
-    LaunchedEffect(classExpanded, methodExpanded) {
-        onDropdownExpandedChange(classExpanded || methodExpanded)
-    }
-    var classSearchText by remember { mutableStateOf("") }
-
-    // Sync the text field with the selected class name
-    LaunchedEffect(selectedClassName) {
-        classSearchText = selectedClassName ?: ""
-    }
-
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        // Class selector with searchable dropdown
-        ExposedDropdownMenuBox(
-            expanded = classExpanded,
-            onExpandedChange = { classExpanded = it },
-            modifier = Modifier.weight(1f),
-        ) {
-            OutlinedTextField(
-                value = classSearchText,
-                onValueChange = { text ->
-                    classSearchText = text
-                    classExpanded = true
-                },
-                placeholder = { Text("Type to search classes...") },
-                label = { Text("Class") },
-                singleLine = true,
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = classExpanded)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(MenuAnchorType.PrimaryEditable),
-            )
-
-            val filteredClasses = remember(classSearchText, classes) {
-                if (classSearchText.isBlank() || classSearchText == selectedClassName) {
-                    classes.take(100)
-                } else {
-                    classes.filter {
-                        it.name.lowercase().contains(classSearchText.lowercase())
-                    }.take(100)
-                }
-            }
-
-            ExposedDropdownMenu(
-                expanded = classExpanded,
-                onDismissRequest = {
-                    classExpanded = false
-                    // Restore to selected if user didn't pick anything
-                    if (classSearchText != selectedClassName) {
-                        classSearchText = selectedClassName ?: ""
-                    }
-                },
-                modifier = Modifier.heightIn(max = 300.dp),
-            ) {
-                if (filteredClasses.isEmpty()) {
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = "No classes found",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        },
-                        onClick = {},
-                        enabled = false,
-                    )
-                } else {
-                    filteredClasses.forEach { classInfo ->
-                        DropdownMenuItem(
-                            text = {
-                                Column {
-                                    Text(
-                                        text = classInfo.name.substringAfterLast('.'),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                    )
-                                    Text(
-                                        text = classInfo.name.substringBeforeLast('.', ""),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            },
-                            onClick = {
-                                classSearchText = classInfo.name
-                                onSelectClass(classInfo.name)
-                                classExpanded = false
-                            },
-                        )
-                    }
-                }
-            }
-        }
-
-        // Method selector
-        ExposedDropdownMenuBox(
-            expanded = methodExpanded,
-            onExpandedChange = { if (methods.isNotEmpty()) methodExpanded = it },
-            modifier = Modifier.weight(1f),
-        ) {
-            OutlinedTextField(
-                value = selectedMethod?.let { "${it.name}${it.descriptor}" } ?: "",
-                onValueChange = {},
-                placeholder = { Text("Select a method...") },
-                label = { Text("Method") },
-                singleLine = true,
-                readOnly = true,
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = methodExpanded)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
-                enabled = methods.isNotEmpty(),
-            )
-
-            ExposedDropdownMenu(
-                expanded = methodExpanded,
-                onDismissRequest = { methodExpanded = false },
-                modifier = Modifier.heightIn(max = 300.dp),
-            ) {
-                methods.forEach { method ->
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = "${method.accessString} ${method.name}${method.descriptor}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        },
-                        onClick = {
-                            onSelectMethod(method.name, method.descriptor)
-                            methodExpanded = false
-                        },
-                    )
-                }
-            }
-        }
-
-        if (isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(24.dp),
-                strokeWidth = 2.dp,
-            )
-        }
     }
 }
 
@@ -284,6 +235,7 @@ private fun SelectorRow(
 private fun BytecodePanel(
     method: DisassembledMethod?,
     selectedInstruction: Instruction?,
+    instructionComments: Map<Int, String>,
     isLoading: Boolean,
     onSelectInstruction: (Instruction?) -> Unit,
     modifier: Modifier = Modifier,
@@ -328,7 +280,6 @@ private fun BytecodePanel(
                     }
                 }
                 else -> {
-                    // Header row
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -348,6 +299,7 @@ private fun BytecodePanel(
                             InstructionRow(
                                 instruction = instruction,
                                 isSelected = instruction == selectedInstruction,
+                                comment = instructionComments[instruction.offset],
                                 onClick = {
                                     onSelectInstruction(
                                         if (instruction == selectedInstruction) null else instruction
@@ -366,10 +318,11 @@ private fun BytecodePanel(
 private fun InstructionRow(
     instruction: Instruction,
     isSelected: Boolean,
+    comment: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val color = instructionColor(instruction.type)
+    val color = linearInstructionColor(instruction.type)
 
     Surface(
         modifier = modifier
@@ -381,47 +334,305 @@ private fun InstructionRow(
             Color.Transparent
         },
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Offset
-            Text(
-                text = "${instruction.offset}",
-                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                modifier = Modifier.width(36.dp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            // Line number
-            Text(
-                text = instruction.lineNumber?.toString() ?: "",
-                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                modifier = Modifier.width(40.dp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            // Mnemonic
-            Text(
-                text = instruction.mnemonic,
-                style = MaterialTheme.typography.bodySmall.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                ),
-                modifier = Modifier.width(140.dp),
-                color = color,
-            )
-
-            // Operands
-            Text(
-                text = instruction.operands,
-                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-            )
+        Column {
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "${instruction.offset}",
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    modifier = Modifier.width(36.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = instruction.lineNumber?.toString() ?: "",
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    modifier = Modifier.width(40.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = instruction.mnemonic,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    modifier = Modifier.width(140.dp),
+                    color = color,
+                )
+                Text(
+                    text = instruction.operands,
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                )
+                if (comment != null) {
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "; $comment",
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        fontStyle = FontStyle.Italic,
+                        color = Color(0xFF6A9955),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun CfgPanel(
+    uiState: InspectorUiState,
+    onBlockClick: (String?) -> Unit,
+    onBlockHeaderClick: (String) -> Unit,
+    onInstructionClick: (String, Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.fillMaxHeight(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+        ),
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            val layout = uiState.graphLayout
+
+            when {
+                uiState.isLoading -> {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                }
+                layout == null || layout.nodes.isEmpty() -> {
+                    Text(
+                        text = "Select a class and method to view its control flow graph",
+                        modifier = Modifier.align(Alignment.Center),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                else -> {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        EdgeLegend(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp),
+                        )
+
+                        GraphView(
+                            layout = layout,
+                            onNodeClick = { node -> onBlockClick(node.id) },
+                            selectedNodeId = uiState.selectedBlockId,
+                            nodeContent = { node ->
+                                BasicBlockNodeView(
+                                    block = node.data,
+                                    isSelected = node.id == uiState.selectedBlockId,
+                                    isBlockHeaderSelected = node.id == uiState.selectedBlockId && uiState.isBlockHeaderSelected,
+                                    selectedInstructionOffset = if (node.id == uiState.selectedBlockId) {
+                                        uiState.selectedInstructionOffset
+                                    } else null,
+                                    blockComment = uiState.methodComments.blockLevel[node.id],
+                                    instructionComments = uiState.methodComments.instructionLevel,
+                                    onBlockHeaderClick = { onBlockHeaderClick(node.id) },
+                                    onInstructionClick = { offset -> onInstructionClick(node.id, offset) },
+                                )
+                            },
+                            edgeColor = ::edgeTypeColor,
+                            edgeDashPattern = { edge ->
+                                if (edge.type == EdgeType.EXCEPTION) {
+                                    PathEffect.dashPathEffect(floatArrayOf(8f, 4f))
+                                } else null
+                            },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BasicBlockNodeView(
+    block: BasicBlock,
+    isSelected: Boolean,
+    isBlockHeaderSelected: Boolean,
+    selectedInstructionOffset: Int?,
+    blockComment: String?,
+    instructionComments: Map<Int, String>,
+    onBlockHeaderClick: () -> Unit,
+    onInstructionClick: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val borderColor = when (block.blockType) {
+        BlockType.ENTRY -> Color(0xFF4A90D9)
+        BlockType.NORMAL -> Color(0xFF888888)
+        BlockType.LOOP_HEADER -> Color(0xFFE8A838)
+        BlockType.CATCH_BLOCK -> Color(0xFFD94A4A)
+        BlockType.EXIT -> Color(0xFF4AD94A)
+    }
+
+    val bgColor = if (isSelected) {
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
+
+    Card(
+        modifier = modifier.fillMaxSize(),
+        colors = CardDefaults.cardColors(containerColor = bgColor),
+        border = CardDefaults.outlinedCardBorder().copy(
+            width = if (isSelected) 2.dp else 1.dp,
+            brush = androidx.compose.ui.graphics.SolidColor(borderColor),
+        ),
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        if (isBlockHeaderSelected) {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                        } else {
+                            borderColor.copy(alpha = 0.15f)
+                        }
+                    )
+                    .clickable { onBlockHeaderClick() }
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = block.id,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Surface(
+                    color = borderColor.copy(alpha = 0.3f),
+                    shape = MaterialTheme.shapes.extraSmall,
+                ) {
+                    Text(
+                        text = block.blockType.name,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+
+            blockComment?.let { text ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f))
+                        .padding(horizontal = 6.dp, vertical = 1.dp),
+                ) {
+                    Text(
+                        text = "; $text",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = FontFamily.Monospace,
+                        fontStyle = FontStyle.Italic,
+                        color = Color(0xFF6A9955),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+
+            for (instr in block.instructions) {
+                val instrSelected = selectedInstructionOffset == instr.offset
+                val instrComment = instructionComments[instr.offset]
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(
+                            if (instrSelected) {
+                                Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+                            } else Modifier
+                        )
+                        .clickable { onInstructionClick(instr.offset) }
+                        .padding(horizontal = 6.dp, vertical = 1.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text = String.format("%3d", instr.offset),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = instr.mnemonic,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        color = cfgInstructionColor(instr.type),
+                    )
+                    if (instr.operands.isNotEmpty()) {
+                        Text(
+                            text = instr.operands,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = if (instrComment != null) Modifier.weight(1f, fill = false) else Modifier,
+                        )
+                    }
+                    if (instrComment != null) {
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(
+                            text = "; $instrComment",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontFamily = FontFamily.Monospace,
+                            color = Color(0xFF6A9955),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EdgeLegend(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        LegendItem("Fall-through", edgeTypeColor(EdgeType.FALL_THROUGH))
+        LegendItem("Jump", edgeTypeColor(EdgeType.UNCONDITIONAL_JUMP))
+        LegendItem("True", edgeTypeColor(EdgeType.BRANCH_TRUE))
+        LegendItem("False", edgeTypeColor(EdgeType.BRANCH_FALSE))
+        LegendItem("Exception", edgeTypeColor(EdgeType.EXCEPTION))
+        LegendItem("Switch", edgeTypeColor(EdgeType.SWITCH_CASE))
+    }
+}
+
+@Composable
+private fun LegendItem(label: String, color: Color) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Surface(
+            modifier = Modifier.size(10.dp),
+            color = color,
+            shape = MaterialTheme.shapes.extraSmall,
+        ) {}
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -493,7 +704,7 @@ private fun InstructionDetailPanel(
                 Text(
                     text = instruction.mnemonic,
                     style = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
-                    color = instructionColor(instruction.type),
+                    color = linearInstructionColor(instruction.type),
                 )
             }
             Column {
@@ -574,19 +785,42 @@ private fun ErrorBanner(
     }
 }
 
-/**
- * Returns the color for an instruction category.
- */
+private fun edgeTypeColor(edge: CfgEdge): Color = edgeTypeColor(edge.type)
+
+private fun edgeTypeColor(type: EdgeType): Color = when (type) {
+    EdgeType.FALL_THROUGH -> Color(0xFF888888)
+    EdgeType.UNCONDITIONAL_JUMP -> Color(0xFF4A90D9)
+    EdgeType.BRANCH_TRUE -> Color(0xFF4AD94A)
+    EdgeType.BRANCH_FALSE -> Color(0xFFD94A4A)
+    EdgeType.EXCEPTION -> Color(0xFFE8A838)
+    EdgeType.SWITCH_CASE -> Color(0xFF9B59B6)
+    EdgeType.SWITCH_DEFAULT -> Color(0xFF9B59B6)
+}
+
 @Composable
-private fun instructionColor(category: InstructionCategory): Color = when (category) {
-    InstructionCategory.CONTROL_FLOW -> Color(0xFFEF5350)  // Red
-    InstructionCategory.METHOD_CALL -> Color(0xFF42A5F5)   // Blue
-    InstructionCategory.FIELD_ACCESS -> Color(0xFF66BB6A)  // Green
-    InstructionCategory.LOAD_STORE -> Color(0xFF9E9E9E)    // Gray
-    InstructionCategory.STACK -> Color(0xFFAB47BC)         // Purple
-    InstructionCategory.CONSTANT -> Color(0xFFFFCA28)      // Amber
-    InstructionCategory.ARITHMETIC -> Color(0xFFFF7043)    // Deep Orange
-    InstructionCategory.TYPE_CHECK -> Color(0xFF26C6DA)    // Cyan
-    InstructionCategory.ARRAY -> Color(0xFF8D6E63)         // Brown
+private fun linearInstructionColor(category: InstructionCategory): Color = when (category) {
+    InstructionCategory.CONTROL_FLOW -> Color(0xFFEF5350)
+    InstructionCategory.METHOD_CALL -> Color(0xFF42A5F5)
+    InstructionCategory.FIELD_ACCESS -> Color(0xFF66BB6A)
+    InstructionCategory.LOAD_STORE -> Color(0xFF9E9E9E)
+    InstructionCategory.STACK -> Color(0xFFAB47BC)
+    InstructionCategory.CONSTANT -> Color(0xFFFFCA28)
+    InstructionCategory.ARITHMETIC -> Color(0xFFFF7043)
+    InstructionCategory.TYPE_CHECK -> Color(0xFF26C6DA)
+    InstructionCategory.ARRAY -> Color(0xFF8D6E63)
+    InstructionCategory.OTHER -> MaterialTheme.colorScheme.onSurface
+}
+
+@Composable
+private fun cfgInstructionColor(type: InstructionCategory): Color = when (type) {
+    InstructionCategory.CONTROL_FLOW -> Color(0xFFD94A4A)
+    InstructionCategory.METHOD_CALL -> Color(0xFF4A90D9)
+    InstructionCategory.FIELD_ACCESS -> Color(0xFF4AD94A)
+    InstructionCategory.LOAD_STORE -> Color(0xFF888888)
+    InstructionCategory.STACK -> Color(0xFF888888)
+    InstructionCategory.CONSTANT -> Color(0xFFE8A838)
+    InstructionCategory.ARITHMETIC -> MaterialTheme.colorScheme.onSurface
+    InstructionCategory.TYPE_CHECK -> Color(0xFF9B59B6)
+    InstructionCategory.ARRAY -> Color(0xFF4AD94A)
     InstructionCategory.OTHER -> MaterialTheme.colorScheme.onSurface
 }
