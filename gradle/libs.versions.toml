@@ -25,6 +25,9 @@ vineflower = "1.10.1"
 # DI
 koin = "4.0.0"
 
+# AI agents (JetBrains Koog)
+koog = "0.8.0"
+
 # Logging
 slf4j = "2.0.16"
 logback = "1.5.12"
@@ -71,6 +74,9 @@ vineflower = { module = "org.vineflower:vineflower", version.ref = "vineflower" 
 # DI - Koin
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
+
+# Koog (AI agents)
+koog-agents = { module = "ai.koog:koog-agents", version.ref = "koog" }
 
 # Logging
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }

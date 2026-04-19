@@ -1,9 +1,14 @@
 package com.bugdigger.bytesight.di
 
+import com.bugdigger.ai.BytesightAgentServices
 import com.bugdigger.bytesight.service.AgentClient
+import com.bugdigger.bytesight.service.AgentConfigStore
 import com.bugdigger.bytesight.service.AttachService
+import com.bugdigger.bytesight.service.BytesightAgentServicesImpl
 import com.bugdigger.bytesight.service.CommentStore
+import com.bugdigger.bytesight.service.ConnectionRegistry
 import com.bugdigger.bytesight.service.RenameStore
+import com.bugdigger.bytesight.ui.ai.AIViewModel
 import com.bugdigger.bytesight.ui.attach.AttachViewModel
 import com.bugdigger.bytesight.ui.browser.ClassBrowserViewModel
 import com.bugdigger.bytesight.ui.heap.HeapViewModel
@@ -28,10 +33,16 @@ val appModule = module {
     singleOf(::AgentClient)
     singleOf(::CommentStore)
     singleOf(::RenameStore)
+    singleOf(::ConnectionRegistry)
+    singleOf(::AgentConfigStore)
 
     // Decompiler configuration
     single { DecompilerOptions() }
     single<Decompiler> { VineflowerDecompiler(get()) }
+
+    // AI agent services (wires BytesightAgentServices to real services)
+    single<BytesightAgentServices> { BytesightAgentServicesImpl(get(), get(), get(), get()) }
+    single { get<BytesightAgentServices>() as BytesightAgentServicesImpl }
 
     // ViewModels
     factoryOf(::AttachViewModel)
@@ -42,4 +53,5 @@ val appModule = module {
     factoryOf(::TraceViewModel)
     factoryOf(::HeapViewModel)
     factoryOf(::SettingsViewModel)
+    factoryOf(::AIViewModel)
 }

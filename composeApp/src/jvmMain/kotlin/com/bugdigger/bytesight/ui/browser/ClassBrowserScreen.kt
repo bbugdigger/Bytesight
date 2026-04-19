@@ -11,6 +11,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.bugdigger.bytesight.ui.components.CodeViewer
@@ -23,6 +25,7 @@ import com.bugdigger.protocol.ClassInfo
 fun ClassBrowserScreen(
     viewModel: ClassBrowserViewModel,
     connectionKey: String,
+    onAskAI: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -39,7 +42,9 @@ fun ClassBrowserScreen(
         // Header
         ClassBrowserHeader(
             isLoading = uiState.isLoading,
+            selectedClassName = uiState.selectedClass?.name,
             onRefresh = viewModel::refreshClasses,
+            onAskAI = onAskAI,
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -91,7 +96,9 @@ fun ClassBrowserScreen(
 @Composable
 private fun ClassBrowserHeader(
     isLoading: Boolean,
+    selectedClassName: String? = null,
     onRefresh: () -> Unit,
+    onAskAI: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -112,17 +119,28 @@ private fun ClassBrowserHeader(
             )
         }
 
-        IconButton(
-            onClick = onRefresh,
-            enabled = !isLoading,
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.dp,
-                )
-            } else {
-                Text("🔄", style = MaterialTheme.typography.titleMedium)
+            if (onAskAI != null && !selectedClassName.isNullOrBlank()) {
+                OutlinedButton(onClick = {
+                    onAskAI("Analyze class `$selectedClassName` — describe its purpose and relationships.")
+                }) { Text("✨ Analyze selection") }
+            }
+
+            IconButton(
+                onClick = onRefresh,
+                enabled = !isLoading,
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Text("🔄", style = MaterialTheme.typography.titleMedium)
+                }
             }
         }
     }
@@ -282,6 +300,8 @@ private fun CodePanel(
     isLoading: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val clipboardManager = LocalClipboardManager.current
+
     Card(
         modifier = modifier.fillMaxHeight(),
         colors = CardDefaults.cardColors(
@@ -289,13 +309,27 @@ private fun CodePanel(
         ),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = selectedClass?.name ?: "Select a class",
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = selectedClass?.name ?: "Select a class",
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+
+                if (!decompiled.isNullOrEmpty()) {
+                    IconButton(
+                        onClick = { clipboardManager.setText(AnnotatedString(decompiled)) },
+                    ) {
+                        Text("📋", style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 

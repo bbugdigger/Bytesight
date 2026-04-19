@@ -1,6 +1,9 @@
 package com.bugdigger.bytesight.ui.settings
 
 import androidx.lifecycle.ViewModel
+import com.bugdigger.ai.AIProvider
+import com.bugdigger.ai.AgentConfig
+import com.bugdigger.bytesight.service.AgentConfigStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,10 +37,42 @@ data class SettingsUiState(
  * ViewModel for the Settings screen.
  * Manages application-wide settings.
  */
-class SettingsViewModel : ViewModel() {
+class SettingsViewModel(
+    private val agentConfigStore: AgentConfigStore,
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    /** Live AI agent config — edited via [updateAgentConfig]. */
+    val agentConfig: StateFlow<AgentConfig> = agentConfigStore.config
+
+    fun setAIProvider(provider: AIProvider) {
+        val current = agentConfig.value
+        val defaultModel = when (provider) {
+            AIProvider.OPEN_ROUTER -> AgentConfig.DEFAULT_OPEN_ROUTER_MODEL
+            AIProvider.OPENAI -> AgentConfig.DEFAULT_OPENAI_MODEL
+            AIProvider.ANTHROPIC -> AgentConfig.DEFAULT_ANTHROPIC_MODEL
+            AIProvider.OLLAMA -> AgentConfig.DEFAULT_OLLAMA_MODEL
+        }
+        agentConfigStore.update(current.copy(provider = provider, model = defaultModel))
+    }
+
+    fun setAIApiKey(key: String) {
+        agentConfigStore.update(agentConfig.value.copy(apiKey = key))
+    }
+
+    fun setAIModel(model: String) {
+        agentConfigStore.update(agentConfig.value.copy(model = model))
+    }
+
+    fun setAITemperature(temperature: Double) {
+        agentConfigStore.update(agentConfig.value.copy(temperature = temperature.coerceIn(0.0, 1.0)))
+    }
+
+    fun setAIMaxIterations(max: Int) {
+        agentConfigStore.update(agentConfig.value.copy(maxIterations = max.coerceIn(1, 100)))
+    }
 
     // Decompiler settings
     fun setShowLineNumbers(enabled: Boolean) {

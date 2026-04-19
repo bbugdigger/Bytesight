@@ -7,9 +7,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.bugdigger.ai.AIProvider
 
 /**
  * Screen for managing application settings.
@@ -20,6 +26,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val agentConfig by viewModel.agentConfig.collectAsState()
 
     Column(
         modifier = modifier
@@ -125,6 +132,22 @@ fun SettingsScreen(
                     steps = 28,
                     valueLabel = "${uiState.connectionTimeoutMs / 1000}s",
                     onValueChange = { viewModel.setConnectionTimeout(it.toInt()) },
+                )
+            }
+
+            // AI Agent Settings
+            SettingsSection(title = "AI Agent") {
+                AISettingsSection(
+                    provider = agentConfig.provider,
+                    apiKey = agentConfig.apiKey,
+                    model = agentConfig.model,
+                    temperature = agentConfig.temperature,
+                    maxIterations = agentConfig.maxIterations,
+                    onProviderChange = viewModel::setAIProvider,
+                    onApiKeyChange = viewModel::setAIApiKey,
+                    onModelChange = viewModel::setAIModel,
+                    onTemperatureChange = viewModel::setAITemperature,
+                    onMaxIterationsChange = viewModel::setAIMaxIterations,
                 )
             }
 
@@ -338,5 +361,106 @@ private fun InfoRow(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
         )
+    }
+}
+
+@Composable
+private fun AISettingsSection(
+    provider: AIProvider,
+    apiKey: String,
+    model: String,
+    temperature: Double,
+    maxIterations: Int,
+    onProviderChange: (AIProvider) -> Unit,
+    onApiKeyChange: (String) -> Unit,
+    onModelChange: (String) -> Unit,
+    onTemperatureChange: (Double) -> Unit,
+    onMaxIterationsChange: (Int) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        ProviderDropdown(provider = provider, onProviderChange = onProviderChange)
+
+        if (provider.requiresApiKey) {
+            var visible by remember { mutableStateOf(false) }
+            OutlinedTextField(
+                value = apiKey,
+                onValueChange = onApiKeyChange,
+                label = { Text("API Key") },
+                singleLine = true,
+                visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    TextButton(onClick = { visible = !visible }) {
+                        Text(if (visible) "Hide" else "Show")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
+        OutlinedTextField(
+            value = model,
+            onValueChange = onModelChange,
+            label = { Text("Model") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        SliderSetting(
+            title = "Temperature",
+            description = "Lower = more deterministic; higher = more creative",
+            value = temperature.toFloat(),
+            valueRange = 0f..1f,
+            steps = 9,
+            valueLabel = "%.2f".format(temperature),
+            onValueChange = { onTemperatureChange(it.toDouble()) },
+        )
+
+        SliderSetting(
+            title = "Max tool iterations",
+            description = "Upper bound on tool-calling turns per prompt",
+            value = maxIterations.toFloat(),
+            valueRange = 5f..50f,
+            steps = 44,
+            valueLabel = "$maxIterations",
+            onValueChange = { onMaxIterationsChange(it.toInt()) },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ProviderDropdown(
+    provider: AIProvider,
+    onProviderChange: (AIProvider) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+    ) {
+        OutlinedTextField(
+            value = provider.displayName,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Provider") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            AIProvider.entries.forEach { p ->
+                DropdownMenuItem(
+                    text = { Text(p.displayName) },
+                    onClick = {
+                        onProviderChange(p)
+                        expanded = false
+                    },
+                )
+            }
+        }
     }
 }
