@@ -57,8 +57,12 @@ class BytesightAgent(
     suspend fun ask(prompt: String): String {
         val current = config
         if (!current.isUsable) {
-            return "AI agent is not configured. Open Settings and enter an API key for " +
-                "${current.provider.displayName}."
+            val detail = if (current.provider.requiresApiKey) {
+                "enter an API key for ${current.provider.displayName}"
+            } else {
+                "set a model name for ${current.provider.displayName}"
+            }
+            return "AI agent is not configured. Open Settings and $detail."
         }
 
         val agent = getOrBuildAgent(current)

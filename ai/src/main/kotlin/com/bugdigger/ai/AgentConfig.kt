@@ -13,7 +13,8 @@ data class AgentConfig(
     val maxIterations: Int = 20,
 ) {
     /** True when the config has everything needed to actually call the LLM. */
-    val isUsable: Boolean get() = apiKey.isNotBlank() && model.isNotBlank()
+    val isUsable: Boolean
+        get() = model.isNotBlank() && (!provider.requiresApiKey || apiKey.isNotBlank())
 
     companion object {
         const val DEFAULT_OPEN_ROUTER_MODEL = "anthropic/claude-sonnet-4-6"

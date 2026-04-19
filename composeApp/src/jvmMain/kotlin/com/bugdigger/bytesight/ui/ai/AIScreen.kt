@@ -100,6 +100,7 @@ private fun AIHeader(isConfigured: Boolean, onClear: () -> Unit) {
             text = "AI Assistant",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(Modifier.weight(1f))
         if (isConfigured) {
@@ -116,7 +117,8 @@ private fun NotConfiguredBanner() {
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text(
-            text = "AI agent is not configured. Open Settings and enter an API key.",
+            text = "AI agent is not configured. Open Settings to pick a provider and model " +
+                "(and add an API key if the provider requires one).",
             color = MaterialTheme.colorScheme.onTertiaryContainer,
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(12.dp),
@@ -162,9 +164,21 @@ private fun EmptyChatPlaceholder() {
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Text("• List all non-system classes", style = MaterialTheme.typography.bodySmall)
-        Text("• Decompile com.example.Foo and explain it", style = MaterialTheme.typography.bodySmall)
-        Text("• Find strings containing 'password'", style = MaterialTheme.typography.bodySmall)
+        Text(
+            text = "• List all non-system classes",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = "• Decompile com.example.Foo and explain it",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = "• Find strings containing 'password'",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
     }
 }
 
@@ -247,9 +261,19 @@ private fun InputBar(
             value = input,
             onValueChange = onInputChange,
             enabled = isEnabled && !isThinking,
-            placeholder = { Text("Ask the agent…") },
+            placeholder = {
+                Text(
+                    text = "Ask the agent…",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
             maxLines = 6,
             modifier = Modifier.weight(1f),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            ),
         )
         Spacer(Modifier.width(8.dp))
         Button(
