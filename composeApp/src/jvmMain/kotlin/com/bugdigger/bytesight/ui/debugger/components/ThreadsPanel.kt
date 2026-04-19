@@ -38,7 +38,11 @@ fun ThreadsPanel(
         ),
     ) {
         Column(Modifier.fillMaxSize().padding(12.dp)) {
-            Text("Threads (${threads.size})", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Threads (${threads.size})",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+            )
             if (threads.isEmpty()) {
                 Text(
                     "No observed threads yet. Threads appear here once they hit a breakpoint or emit a state change.",
@@ -77,12 +81,14 @@ private fun ThreadRow(thread: ThreadView, selected: Boolean, onClick: () -> Unit
         Text(
             text = thread.state.glyph(),
             modifier = Modifier.padding(end = 8.dp),
+            color = Color.White,
         )
         Column(Modifier.weight(1f)) {
             Text(
                 text = thread.name.ifBlank { "thread-${thread.id}" },
                 style = MaterialTheme.typography.bodyMedium,
                 fontFamily = FontFamily.Monospace,
+                color = Color.White,
             )
             Text(
                 text = thread.state.label() + "  •  tid=${thread.id}",

@@ -12,15 +12,18 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.bugdigger.bytesight.ui.debugger.components.BreakpointsPanel
@@ -55,6 +58,7 @@ fun DebuggerScreen(
     val currentIsSuspended = threads.firstOrNull { it.id == currentThreadId }?.state ==
         ThreadState.THREAD_STATE_SUSPENDED
 
+    CompositionLocalProvider(LocalContentColor provides Color.White) {
     Column(
         modifier = modifier.fillMaxSize().padding(16.dp),
     ) {
@@ -132,6 +136,7 @@ fun DebuggerScreen(
             }
         }
     }
+    }
 }
 
 @Composable
@@ -148,10 +153,12 @@ private fun ErrorBanner(error: String, onDismiss: () -> Unit) {
         ) {
             Text(
                 text = error,
-                color = MaterialTheme.colorScheme.onErrorContainer,
+                color = Color.White,
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = onDismiss) { Text("Dismiss") }
+            TextButton(onClick = onDismiss) {
+                Text("Dismiss", color = Color.White)
+            }
         }
     }
 }
@@ -168,14 +175,14 @@ private fun HitBanner(className: String, methodName: String, line: Int, threadNa
             Text(
                 text = "● Paused at breakpoint",
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                color = Color.White,
             )
+            val lineSuffix = if (line > 0) ":$line" else ""
             Text(
-                text = "$className#$methodName" + if (line > 0) ":$line" else "" +
-                    "   (thread: $threadName)",
+                text = "$className#$methodName$lineSuffix   (thread: $threadName)",
                 style = MaterialTheme.typography.bodyMedium,
                 fontFamily = FontFamily.Monospace,
-                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                color = Color.White,
             )
         }
     }

@@ -20,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.bugdigger.bytesight.debugger.DebuggerState
@@ -42,6 +43,7 @@ fun BreakpointsPanel(
             Text(
                 "Breakpoints (${breakpoints.size})",
                 style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
             )
             Spacer(Modifier.width(8.dp))
             if (breakpoints.isEmpty()) {
@@ -82,6 +84,7 @@ private fun BreakpointRow(
                     if (bp.displayLine > 0) ":${bp.displayLine}" else "",
                 style = MaterialTheme.typography.bodyMedium,
                 fontFamily = FontFamily.Monospace,
+                color = Color.White,
             )
             val modeLabel = when (bp.mode) {
                 MethodBreakpointMode.METHOD_BP_ENTRY -> "entry"
@@ -96,7 +99,7 @@ private fun BreakpointRow(
             )
         }
         IconButton(onClick = { onRemove(bp.id) }) {
-            Text("✕", style = MaterialTheme.typography.bodyLarge)
+            Text("✕", style = MaterialTheme.typography.bodyLarge, color = Color.White)
         }
     }
 }

@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.bugdigger.protocol.FrameSnapshot
@@ -31,7 +32,11 @@ fun VariablesPanel(
         ),
     ) {
         Column(Modifier.fillMaxSize().padding(12.dp)) {
-            Text("Variables", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Variables",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+            )
             if (frame == null) {
                 Text(
                     "Select a stack frame to inspect its arguments and `this` fields.",
@@ -73,7 +78,7 @@ fun VariablesPanel(
                             .fillMaxWidth(),
                     )
                     androidx.compose.material3.TextButton(onClick = { onAskAI(prompt) }) {
-                        Text("Explain this frame")
+                        Text("Explain this frame", color = Color.White)
                     }
                 }
             }
@@ -98,6 +103,7 @@ private fun VariableRow(v: Variable) {
             text = v.name,
             style = MaterialTheme.typography.bodyMedium,
             fontFamily = FontFamily.Monospace,
+            color = Color.White,
             modifier = Modifier.padding(end = 8.dp),
         )
         Text(
@@ -110,7 +116,7 @@ private fun VariableRow(v: Variable) {
             text = v.displayValue,
             style = MaterialTheme.typography.bodyMedium,
             fontFamily = FontFamily.Monospace,
-            color = if (v.isNull) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+            color = if (v.isNull) MaterialTheme.colorScheme.onSurfaceVariant else Color.White,
             modifier = Modifier.weight(1f),
         )
     }

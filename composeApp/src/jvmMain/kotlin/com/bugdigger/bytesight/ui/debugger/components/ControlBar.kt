@@ -41,15 +41,17 @@ fun ControlBar(
         Button(
             onClick = onResumeCurrent,
             enabled = canResume,
+            colors = ButtonDefaults.buttonColors(contentColor = Color.White),
         ) {
-            Text("▶ Resume thread")
+            Text("▶ Resume thread", color = Color.White)
         }
         Spacer(Modifier.width(8.dp))
         OutlinedButton(
             onClick = onResumeAll,
             enabled = suspendedCount > 0,
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
         ) {
-            Text("▶▶ Resume all ($suspendedCount)")
+            Text("▶▶ Resume all ($suspendedCount)", color = Color.White)
         }
         Spacer(Modifier.width(8.dp))
         OutlinedButton(

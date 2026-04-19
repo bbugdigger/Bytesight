@@ -39,7 +39,11 @@ fun CallStackPanel(
         ),
     ) {
         Column(Modifier.fillMaxSize().padding(12.dp)) {
-            Text("Call Stack (${frames.size})", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Call Stack (${frames.size})",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+            )
             if (frames.isEmpty()) {
                 Text(
                     "No frame. Hit a breakpoint to populate this panel.",
@@ -96,6 +100,7 @@ private fun FrameRow(
                     if (frame.lineNumber > 0) ":${frame.lineNumber}" else "",
                 style = MaterialTheme.typography.bodyMedium,
                 fontFamily = FontFamily.Monospace,
+                color = Color.White,
             )
             Text(
                 text = frame.className,
@@ -104,7 +109,7 @@ private fun FrameRow(
             )
         }
         TextButton(onClick = onOpenInInspector) {
-            Text("Inspect")
+            Text("Inspect", color = Color.White)
         }
     }
 }
