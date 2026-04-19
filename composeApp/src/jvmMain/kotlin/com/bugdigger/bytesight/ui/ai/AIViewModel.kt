@@ -75,8 +75,16 @@ class AIViewModel(
         }
 
         currentJob = viewModelScope.launch {
-            val answer = runCatching { agent.ask(text) }
+            val raw = runCatching { agent.ask(text) }
                 .getOrElse { "Agent error: ${it.message ?: it::class.simpleName}" }
+            val answer = if (raw.isBlank()) {
+                "(agent returned no text. The model may not support tool calls, may have " +
+                    "hit the iteration limit, or may have stopped mid-reasoning. Try a " +
+                    "larger / tool-capable model, raise Max tool iterations in Settings, " +
+                    "or rephrase the prompt.)"
+            } else {
+                raw
+            }
             _uiState.update {
                 it.copy(
                     messages = it.messages + ChatMessage(role = ChatRole.AGENT, text = answer),
