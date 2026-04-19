@@ -11,6 +11,7 @@ enum class Screen(val title: String, val icon: String) {
     STRINGS("Strings", "📝"),
     TRACE("Trace", "📊"),
     HEAP("Heap", "💾"),
+    DEBUGGER("Debugger", "🐞"),
     AI("AI", "✨"),
     SETTINGS("Settings", "⚙"),
 }

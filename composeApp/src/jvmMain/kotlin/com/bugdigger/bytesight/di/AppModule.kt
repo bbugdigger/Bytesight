@@ -1,6 +1,9 @@
 package com.bugdigger.bytesight.di
 
 import com.bugdigger.ai.BytesightAgentServices
+import com.bugdigger.bytesight.debugger.DebuggerState
+import com.bugdigger.bytesight.debugger.ExecutionCursor
+import com.bugdigger.bytesight.debugger.LiveCursor
 import com.bugdigger.bytesight.service.AgentClient
 import com.bugdigger.bytesight.service.AgentConfigStore
 import com.bugdigger.bytesight.service.AttachService
@@ -11,6 +14,7 @@ import com.bugdigger.bytesight.service.RenameStore
 import com.bugdigger.bytesight.ui.ai.AIViewModel
 import com.bugdigger.bytesight.ui.attach.AttachViewModel
 import com.bugdigger.bytesight.ui.browser.ClassBrowserViewModel
+import com.bugdigger.bytesight.ui.debugger.DebuggerViewModel
 import com.bugdigger.bytesight.ui.heap.HeapViewModel
 import com.bugdigger.bytesight.ui.hierarchy.HierarchyViewModel
 import com.bugdigger.bytesight.ui.inspector.InspectorViewModel
@@ -36,6 +40,10 @@ val appModule = module {
     singleOf(::ConnectionRegistry)
     singleOf(::AgentConfigStore)
 
+    // Debugger
+    singleOf(::DebuggerState)
+    single<ExecutionCursor> { LiveCursor(get(), get()) }
+
     // Decompiler configuration
     single { DecompilerOptions() }
     single<Decompiler> { VineflowerDecompiler(get()) }
@@ -52,6 +60,7 @@ val appModule = module {
     factoryOf(::StringsViewModel)
     factoryOf(::TraceViewModel)
     factoryOf(::HeapViewModel)
+    factoryOf(::DebuggerViewModel)
     factoryOf(::SettingsViewModel)
     factoryOf(::AIViewModel)
 }

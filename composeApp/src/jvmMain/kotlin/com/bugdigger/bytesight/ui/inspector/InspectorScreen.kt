@@ -23,11 +23,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.bugdigger.bytesight.debugger.DebuggerState
 import com.bugdigger.bytesight.ui.components.CodeViewer
 import com.bugdigger.bytesight.ui.components.CommentDialog
 import com.bugdigger.bytesight.ui.components.GraphView
 import com.bugdigger.bytesight.ui.components.RenameDialog
 import com.bugdigger.bytesight.ui.components.SelectorRow
+import org.koin.compose.koinInject
 import com.bugdigger.core.analysis.BasicBlock
 import com.bugdigger.core.analysis.BlockType
 import com.bugdigger.core.analysis.CfgEdge
@@ -51,6 +53,7 @@ fun InspectorScreen(
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val debuggerState: DebuggerState = koinInject()
 
     val density = LocalDensity.current.density
     LaunchedEffect(density) {
@@ -172,6 +175,30 @@ fun InspectorScreen(
                     isLoading = uiState.isLoading || uiState.isLoadingClasses,
                     onDropdownExpandedChange = { dropdownOpen = it },
                 )
+            }
+
+            val selectedClassName = uiState.selectedClassName
+            val selectedMethod = uiState.selectedMethod
+            if (selectedClassName != null && selectedMethod != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = {
+                        debuggerState.requestToggleFromInspector(
+                            className = selectedClassName,
+                            methodName = selectedMethod.name,
+                            methodSignature = selectedMethod.descriptor,
+                            line = 0,
+                        )
+                    }) {
+                        Text("🐞 Toggle method breakpoint")
+                    }
+                    Text(
+                        text = "— opens in Debugger tab",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))

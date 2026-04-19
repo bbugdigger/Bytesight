@@ -2,6 +2,9 @@ package com.bugdigger.agent.server;
 
 import com.bugdigger.agent.collector.ClassCollector;
 import com.bugdigger.agent.collector.LoadedClassInfo;
+import com.bugdigger.agent.debugger.BreakpointManager;
+import com.bugdigger.agent.debugger.DebuggerEventBuffer;
+import com.bugdigger.agent.debugger.ThreadRegistry;
 import com.bugdigger.agent.heap.HeapInspector;
 import com.bugdigger.agent.heap.HeapSnapshotManager;
 import com.bugdigger.agent.hook.HookManager;
@@ -30,14 +33,17 @@ public class BytesightAgentService extends BytesightAgentGrpc.BytesightAgentImpl
     private final ClassCollector classCollector;
     private final HookManager hookManager;
     private final HeapSnapshotManager heapSnapshotManager;
+    private final BreakpointManager breakpointManager;
     private final long startTime;
 
     public BytesightAgentService(Instrumentation instrumentation, ClassCollector classCollector,
-                                 HookManager hookManager, HeapSnapshotManager heapSnapshotManager) {
+                                 HookManager hookManager, HeapSnapshotManager heapSnapshotManager,
+                                 BreakpointManager breakpointManager) {
         this.instrumentation = instrumentation;
         this.classCollector = classCollector;
         this.hookManager = hookManager;
         this.heapSnapshotManager = heapSnapshotManager;
+        this.breakpointManager = breakpointManager;
         this.startTime = System.currentTimeMillis();
     }
     
@@ -494,6 +500,84 @@ public class BytesightAgentService extends BytesightAgentGrpc.BytesightAgentImpl
 
             responseObserver.onNext(builder.build());
         }
+        responseObserver.onCompleted();
+    }
+
+    // ========== Debugger ==========
+
+    @Override
+    public void setBreakpoint(SetBreakpointRequest request, StreamObserver<BreakpointResponse> responseObserver) {
+        Breakpoint bp = request.getBreakpoint();
+        logger.info("setBreakpoint called id='{}' locationCase={}", bp.getId(), bp.getLocationCase());
+
+        BreakpointManager.Result result = breakpointManager.install(bp);
+        BreakpointResponse.Builder resp = BreakpointResponse.newBuilder().setSuccess(result.isSuccess());
+        if (result.isSuccess()) {
+            resp.setBreakpointId(result.getBreakpointId());
+        } else {
+            resp.setError(result.getError() == null ? "" : result.getError());
+        }
+        responseObserver.onNext(resp.build());
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void removeBreakpoint(RemoveBreakpointRequest request, StreamObserver<BreakpointResponse> responseObserver) {
+        logger.info("removeBreakpoint called id='{}'", request.getBreakpointId());
+        BreakpointManager.Result result = breakpointManager.remove(request.getBreakpointId());
+        BreakpointResponse.Builder resp = BreakpointResponse.newBuilder().setSuccess(result.isSuccess());
+        if (result.isSuccess()) {
+            resp.setBreakpointId(result.getBreakpointId());
+        } else {
+            resp.setError(result.getError() == null ? "" : result.getError());
+        }
+        responseObserver.onNext(resp.build());
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void listBreakpoints(ListBreakpointsRequest request, StreamObserver<ListBreakpointsResponse> responseObserver) {
+        ListBreakpointsResponse response = ListBreakpointsResponse.newBuilder()
+                .addAllBreakpoints(breakpointManager.list())
+                .build();
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void subscribeDebuggerEvents(SubscribeRequest request, StreamObserver<DebuggerEvent> responseObserver) {
+        logger.info("subscribeDebuggerEvents called");
+        DebuggerEventBuffer.getInstance().addListener(event -> {
+            try {
+                responseObserver.onNext(event);
+            } catch (Exception e) {
+                logger.warn("Failed to send debugger event: {}", e.getMessage());
+            }
+        });
+    }
+
+    @Override
+    public void resume(ResumeRequest request, StreamObserver<ResumeResponse> responseObserver) {
+        long threadId = request.getThreadId();
+        int resumed = ThreadRegistry.getInstance().resume(threadId);
+        logger.info("resume called threadId={} resumed={}", threadId, resumed);
+        responseObserver.onNext(ResumeResponse.newBuilder()
+                .setSuccess(true)
+                .setResumedCount(resumed)
+                .build());
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void pause(PauseRequest request, StreamObserver<PauseResponse> responseObserver) {
+        // v1: pause is a no-op placeholder — suspending arbitrary threads outside breakpoint
+        // advice is deferred to Phase 2 (requires either a safepoint-coordinated hook or JVMTI).
+        logger.info("pause called threadId={} (no-op in v1)", request.getThreadId());
+        responseObserver.onNext(PauseResponse.newBuilder()
+                .setSuccess(false)
+                .setPausedCount(0)
+                .setError("Pause-outside-breakpoint is not supported in v1")
+                .build());
         responseObserver.onCompleted();
     }
 

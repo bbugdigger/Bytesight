@@ -697,3 +697,12 @@ implementation("org.ow2.asm:asm-util:9.7.1")      // optional, for Textifier deb
 | 3 | Bytecode Diff + Method Call Graph | 5–7 days |
 | 4 | Control Flow Graph Viewer | 5–7 days |
 | **Total** | **7 features** | **~18–25 days** |
+
+---
+
+## Phase 5 — Interactive Debugging
+
+**Feature 8: Debugger Tab** (breakpoints, pause/resume, call stack, variable inspection)
+with a forward-compatible architecture for future Time-Travel Debugging.
+
+Full design doc: [`devdocs/debugger.md`](debugger.md).

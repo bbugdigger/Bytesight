@@ -1,6 +1,7 @@
 package com.bugdigger.agent.server;
 
 import com.bugdigger.agent.collector.ClassCollector;
+import com.bugdigger.agent.debugger.BreakpointManager;
 import com.bugdigger.agent.heap.HeapSnapshotManager;
 import com.bugdigger.agent.hook.HookManager;
 import io.grpc.Server;
@@ -22,6 +23,7 @@ public class AgentGrpcServer {
     private final int port;
     private final Server server;
     private final HookManager hookManager;
+    private final BreakpointManager breakpointManager;
     
     public AgentGrpcServer(int port, Instrumentation instrumentation, ClassCollector classCollector,
                            HeapSnapshotManager heapSnapshotManager) {
@@ -30,9 +32,12 @@ public class AgentGrpcServer {
         // Create the hook manager for method instrumentation
         this.hookManager = new HookManager(instrumentation);
 
+        // Create the breakpoint manager for the debugger tab
+        this.breakpointManager = new BreakpointManager(instrumentation);
+
         // Create the service implementation
         BytesightAgentService service = new BytesightAgentService(instrumentation, classCollector, hookManager,
-                                                                  heapSnapshotManager);
+                                                                  heapSnapshotManager, breakpointManager);
         
         // Build the gRPC server
         this.server = ServerBuilder.forPort(port)
@@ -83,5 +88,9 @@ public class AgentGrpcServer {
     
     public HookManager getHookManager() {
         return hookManager;
+    }
+
+    public BreakpointManager getBreakpointManager() {
+        return breakpointManager;
     }
 }
