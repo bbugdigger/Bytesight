@@ -23,6 +23,7 @@ import com.bugdigger.protocol.ClassInfo
 fun ClassBrowserScreen(
     viewModel: ClassBrowserViewModel,
     connectionKey: String,
+    onAskAI: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -39,7 +40,9 @@ fun ClassBrowserScreen(
         // Header
         ClassBrowserHeader(
             isLoading = uiState.isLoading,
+            selectedClassName = uiState.selectedClass?.name,
             onRefresh = viewModel::refreshClasses,
+            onAskAI = onAskAI,
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -91,7 +94,9 @@ fun ClassBrowserScreen(
 @Composable
 private fun ClassBrowserHeader(
     isLoading: Boolean,
+    selectedClassName: String? = null,
     onRefresh: () -> Unit,
+    onAskAI: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -112,17 +117,28 @@ private fun ClassBrowserHeader(
             )
         }
 
-        IconButton(
-            onClick = onRefresh,
-            enabled = !isLoading,
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.dp,
-                )
-            } else {
-                Text("🔄", style = MaterialTheme.typography.titleMedium)
+            if (onAskAI != null && !selectedClassName.isNullOrBlank()) {
+                OutlinedButton(onClick = {
+                    onAskAI("Analyze class `$selectedClassName` — describe its purpose and relationships.")
+                }) { Text("✨ Analyze selection") }
+            }
+
+            IconButton(
+                onClick = onRefresh,
+                enabled = !isLoading,
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Text("🔄", style = MaterialTheme.typography.titleMedium)
+                }
             }
         }
     }

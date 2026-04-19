@@ -11,6 +11,7 @@ enum class Screen(val title: String, val icon: String) {
     STRINGS("Strings", "📝"),
     TRACE("Trace", "📊"),
     HEAP("Heap", "💾"),
+    AI("AI", "✨"),
     SETTINGS("Settings", "⚙"),
 }
 
@@ -23,4 +24,6 @@ data class NavigationState(
     val connectionKey: String? = null,
     /** When non-null, the Inspector screen should auto-select this class and clear the field. */
     val pendingInspectorClass: String? = null,
+    /** When non-null, the AI screen should auto-send this prompt and clear the field. */
+    val pendingAIPrompt: String? = null,
 )

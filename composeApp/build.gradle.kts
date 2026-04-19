@@ -31,6 +31,7 @@ kotlin {
             // Project modules
             implementation(project(":protocol"))
             implementation(project(":core"))
+            implementation(project(":ai"))
 
             // gRPC Client
             implementation(libs.grpc.netty.shaded)

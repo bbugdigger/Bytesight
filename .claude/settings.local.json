@@ -9,7 +9,11 @@
       "mcp__jetbrains__find_files_by_name_keyword",
       "mcp__jetbrains__list_directory_tree",
       "mcp__jetbrains__replace_text_in_file",
-      "mcp__jetbrains__create_new_file"
+      "mcp__jetbrains__create_new_file",
+      "mcp__jetbrains__build_project",
+      "mcp__jetbrains__execute_terminal_command",
+      "mcp__jetbrains__get_symbol_info",
+      "mcp__jetbrains__get_file_problems"
     ]
   }
 }

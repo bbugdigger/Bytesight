@@ -47,6 +47,7 @@ fun InspectorScreen(
     connectionKey: String,
     pendingClassName: String? = null,
     onPendingClassConsumed: () -> Unit = {},
+    onAskAI: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -147,7 +148,11 @@ fun InspectorScreen(
                 .fillMaxSize()
                 .padding(24.dp),
         ) {
-            InspectorHeader(viewMode = uiState.viewMode)
+            InspectorHeader(
+                viewMode = uiState.viewMode,
+                selectedClassName = uiState.selectedClassName,
+                onAskAI = onAskAI,
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -229,22 +234,46 @@ fun InspectorScreen(
 }
 
 @Composable
-private fun InspectorHeader(viewMode: ViewMode, modifier: Modifier = Modifier) {
-    Column(modifier = modifier) {
-        Text(
-            text = "Bytecode Inspector",
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        val subtitle = when (viewMode) {
-            ViewMode.LINEAR -> "Linear view. Press TAB for control flow graph. Press / to comment on the selected instruction."
-            ViewMode.CFG -> "Control flow graph. Press TAB for linear view. Press / to comment on the selected block or instruction."
+private fun InspectorHeader(
+    viewMode: ViewMode,
+    selectedClassName: String? = null,
+    onAskAI: ((String) -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Bytecode Inspector",
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            val subtitle = when (viewMode) {
+                ViewMode.LINEAR -> "Linear view. Press TAB for control flow graph. Press / to comment on the selected instruction."
+                ViewMode.CFG -> "Control flow graph. Press TAB for linear view. Press / to comment on the selected block or instruction."
+            }
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        if (onAskAI != null && !selectedClassName.isNullOrBlank()) {
+            Column(horizontalAlignment = Alignment.End) {
+                OutlinedButton(onClick = {
+                    onAskAI("Explain what the class `$selectedClassName` does based on its decompiled source.")
+                }) { Text("✨ Explain class") }
+                Spacer(Modifier.height(4.dp))
+                OutlinedButton(onClick = {
+                    onAskAI(
+                        "Analyze class `$selectedClassName` and suggest meaningful names for all obfuscated symbols. " +
+                            "Apply renames with the rename_symbol tool as you go.",
+                    )
+                }) { Text("✨ Suggest renames") }
+            }
+        }
     }
 }
 

@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import com.bugdigger.bytesight.service.ConnectionRegistry
+import com.bugdigger.bytesight.ui.ai.AIScreen
+import com.bugdigger.bytesight.ui.ai.AIViewModel
 import com.bugdigger.bytesight.ui.attach.AttachScreen
 import com.bugdigger.bytesight.ui.attach.AttachViewModel
 import com.bugdigger.bytesight.ui.browser.ClassBrowserScreen
@@ -36,6 +39,7 @@ import org.koin.compose.koinInject
 fun App() {
     BytesightTheme {
         var navState by remember { mutableStateOf(NavigationState()) }
+        val connectionRegistry: ConnectionRegistry = koinInject()
 
         Row(
             modifier = Modifier
@@ -55,6 +59,7 @@ fun App() {
             MainContent(
                 navState = navState,
                 onConnected = { connectionKey ->
+                    connectionRegistry.setConnection(connectionKey)
                     navState = navState.copy(
                         isConnected = true,
                         connectionKey = connectionKey,
@@ -62,6 +67,7 @@ fun App() {
                     )
                 },
                 onDisconnected = {
+                    connectionRegistry.setConnection(null)
                     navState = navState.copy(
                         isConnected = false,
                         connectionKey = null,
@@ -76,6 +82,15 @@ fun App() {
                 },
                 onClearPendingInspectorClass = {
                     navState = navState.copy(pendingInspectorClass = null)
+                },
+                onAskAI = { prompt ->
+                    navState = navState.copy(
+                        currentScreen = Screen.AI,
+                        pendingAIPrompt = prompt,
+                    )
+                },
+                onClearPendingAIPrompt = {
+                    navState = navState.copy(pendingAIPrompt = null)
                 },
             )
         }
@@ -92,6 +107,8 @@ private fun MainContent(
     onDisconnected: () -> Unit,
     onNavigateToInspector: (className: String) -> Unit,
     onClearPendingInspectorClass: () -> Unit,
+    onAskAI: (prompt: String) -> Unit,
+    onClearPendingAIPrompt: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (navState.currentScreen) {
@@ -111,6 +128,7 @@ private fun MainContent(
                 ClassBrowserScreen(
                     viewModel = viewModel,
                     connectionKey = connectionKey,
+                    onAskAI = onAskAI,
                     modifier = modifier,
                 )
             }
@@ -137,6 +155,7 @@ private fun MainContent(
                     connectionKey = connectionKey,
                     pendingClassName = navState.pendingInspectorClass,
                     onPendingClassConsumed = onClearPendingInspectorClass,
+                    onAskAI = onAskAI,
                     modifier = modifier,
                 )
             }
@@ -161,6 +180,7 @@ private fun MainContent(
                 TraceScreen(
                     viewModel = viewModel,
                     connectionKey = connectionKey,
+                    onAskAI = onAskAI,
                     modifier = modifier,
                 )
             }
@@ -177,6 +197,16 @@ private fun MainContent(
                     modifier = modifier,
                 )
             }
+        }
+
+        Screen.AI -> {
+            val viewModel: AIViewModel = koinInject()
+            AIScreen(
+                viewModel = viewModel,
+                pendingPrompt = navState.pendingAIPrompt,
+                onPendingPromptConsumed = onClearPendingAIPrompt,
+                modifier = modifier,
+            )
         }
 
         Screen.SETTINGS -> {

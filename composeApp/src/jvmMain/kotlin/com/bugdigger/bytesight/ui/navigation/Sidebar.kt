@@ -35,6 +35,7 @@ fun Sidebar(
                 Screen.ATTACH -> true
                 Screen.CLASS_BROWSER, Screen.TRACE,
                 Screen.HIERARCHY, Screen.INSPECTOR, Screen.STRINGS, Screen.HEAP -> isConnected
+                Screen.AI -> true
                 Screen.SETTINGS -> true
             }
 

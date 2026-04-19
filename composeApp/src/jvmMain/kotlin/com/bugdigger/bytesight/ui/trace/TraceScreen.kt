@@ -27,6 +27,7 @@ import com.bugdigger.protocol.MethodTraceEvent
 fun TraceScreen(
     viewModel: TraceViewModel,
     connectionKey: String,
+    onAskAI: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -43,9 +44,11 @@ fun TraceScreen(
         // Header
         TraceHeader(
             isStreaming = uiState.isStreaming,
+            eventCount = uiState.traceEvents.size,
             onStartStreaming = viewModel::startStreaming,
             onStopStreaming = viewModel::stopStreaming,
             onClearEvents = viewModel::clearEvents,
+            onAskAI = onAskAI,
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -101,9 +104,11 @@ fun TraceScreen(
 @Composable
 private fun TraceHeader(
     isStreaming: Boolean,
+    eventCount: Int = 0,
     onStartStreaming: () -> Unit,
     onStopStreaming: () -> Unit,
     onClearEvents: () -> Unit,
+    onAskAI: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -142,6 +147,15 @@ private fun TraceHeader(
 
             OutlinedButton(onClick = onClearEvents) {
                 Text("Clear")
+            }
+
+            if (onAskAI != null && eventCount > 0) {
+                OutlinedButton(onClick = {
+                    onAskAI(
+                        "Explain the recent method call traces. Use the get_traces tool to pull them " +
+                            "and describe the flow, any notable timing, and potential concerns.",
+                    )
+                }) { Text("✨ Explain trace") }
             }
         }
     }
