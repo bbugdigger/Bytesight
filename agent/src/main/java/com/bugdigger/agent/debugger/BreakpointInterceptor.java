@@ -27,12 +27,20 @@ public class BreakpointInterceptor {
             @Advice.AllArguments Object[] arguments,
             @Advice.Origin Method method
     ) {
+        System.out.println("[Bytesight-BP] ADVICE onEnter fired: " + className + "#" + methodName + methodSignature);
         try {
             BreakpointManager manager = BreakpointManager.getInstance();
-            if (manager == null) return;
+            if (manager == null) {
+                System.out.println("[Bytesight-BP] onEnter: BreakpointManager.getInstance() == null");
+                return;
+            }
 
             String bpId = manager.findEntryBreakpoint(className, methodName, methodSignature);
-            if (bpId == null) return;
+            if (bpId == null) {
+                System.out.println("[Bytesight-BP] onEnter: no enabled entry breakpoint for " + className + "#" + methodName + methodSignature);
+                return;
+            }
+            System.out.println("[Bytesight-BP] onEnter: HIT bp='" + bpId + "' on thread " + Thread.currentThread().getName());
 
             Thread current = Thread.currentThread();
             BreakpointHit hit = FrameCapture.captureBreakpointHit(
@@ -60,6 +68,7 @@ public class BreakpointInterceptor {
             @Advice.AllArguments Object[] arguments,
             @Advice.Origin Method method
     ) {
+        System.out.println("[Bytesight-BP] ADVICE onExit fired: " + className + "#" + methodName + methodSignature);
         try {
             BreakpointManager manager = BreakpointManager.getInstance();
             if (manager == null) return;

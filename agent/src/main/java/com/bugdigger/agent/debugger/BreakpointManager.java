@@ -8,8 +8,11 @@ import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.agent.builder.ResettableClassFileTransformer;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.matcher.ElementMatcher;
 import net.bytebuddy.matcher.ElementMatchers;
+import net.bytebuddy.utility.JavaModule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,6 +58,7 @@ public class BreakpointManager {
     }
 
     public Result install(Breakpoint bp) {
+        System.out.println("[Bytesight-BP] install() called id='" + bp.getId() + "' locationCase=" + bp.getLocationCase());
         if (bp.getId() == null || bp.getId().isEmpty()) {
             return Result.failure("Breakpoint id is required");
         }
@@ -66,8 +70,10 @@ public class BreakpointManager {
         try {
             target = resolveTarget(bp);
         } catch (IllegalArgumentException e) {
+            System.out.println("[Bytesight-BP] install() rejected: " + e.getMessage());
             return Result.failure(e.getMessage());
         }
+        System.out.println("[Bytesight-BP] resolved target: class='" + target.className + "' method='" + target.methodName + "' sig='" + target.methodSignature + "' mode=" + target.mode);
 
         String methodKey = methodKey(target.className, target.methodName, target.methodSignature);
         ManagedBreakpoint managed = new ManagedBreakpoint(bp.getId(), bp, target, methodKey);
@@ -149,10 +155,26 @@ public class BreakpointManager {
 
     private String firstEnabledInIndex(Map<String, Set<String>> index,
                                        String className, String methodName, String methodSignature) {
+        // 1. exact-signature match
         Set<String> candidates = index.get(methodKey(className, methodName, methodSignature));
+        // 2. empty-signature wildcard stored by caller
         if (candidates == null) {
-            // wildcard: breakpoint with empty signature matches any overload
             candidates = index.get(methodKey(className, methodName, ""));
+        }
+        // 3. fall back to any BP on this class+method. Safe because ByteBuddy's
+        //    hasDescriptor() filter at install time already limited transformation
+        //    to the correct overload — if advice is running here, the overload matches.
+        //    Needed because @Advice.Origin("#s") yields Java-source style sigs
+        //    (e.g. "(java.lang.String)") while stored keys use JVM descriptors
+        //    (e.g. "(Ljava/lang/String;)V") — they never compare equal.
+        if (candidates == null) {
+            String prefix = className + "#" + methodName + "#";
+            for (Map.Entry<String, Set<String>> e : index.entrySet()) {
+                if (e.getKey().startsWith(prefix)) {
+                    candidates = e.getValue();
+                    break;
+                }
+            }
         }
         if (candidates == null || candidates.isEmpty()) return null;
         for (String id : candidates) {
@@ -180,12 +202,18 @@ public class BreakpointManager {
                 target.className, target.methodName,
                 target.methodSignature.isEmpty() ? "(*)" : target.methodSignature);
 
+        System.out.println("[Bytesight-BP] Installing transformer for " + target.className + "#" + target.methodName + (target.methodSignature.isEmpty() ? "(any-overload)" : target.methodSignature) + " mode=" + target.mode);
+
+        final String listenerKey = target.className + "#" + target.methodName;
         ResettableClassFileTransformer transformer = new AgentBuilder.Default()
                 .disableClassFormatChanges()
                 .with(AgentBuilder.RedefinitionStrategy.RETRANSFORMATION)
+                .with(new LoggingListener(listenerKey))
                 .type(ElementMatchers.named(target.className))
-                .transform((builder, typeDescription, classLoader, module, protectionDomain) ->
-                        builder.visit(Advice.to(BreakpointInterceptor.class).on(finalMatcher)))
+                .transform((builder, typeDescription, classLoader, module, protectionDomain) -> {
+                    System.out.println("[Bytesight-BP] Transforming " + typeDescription.getName() + " (classLoader=" + classLoader + ")");
+                    return builder.visit(Advice.to(BreakpointInterceptor.class).on(finalMatcher));
+                })
                 .installOn(instrumentation);
 
         installed.put(key, new InstalledTransformer(transformer, target, 1));
@@ -324,6 +352,48 @@ public class BreakpointManager {
 
         public String getError() {
             return error;
+        }
+    }
+
+    private static final class LoggingListener implements AgentBuilder.Listener {
+        private final String bpKey;
+
+        LoggingListener(String bpKey) {
+            this.bpKey = bpKey;
+        }
+
+        @Override
+        public void onDiscovery(String typeName, ClassLoader classLoader, JavaModule module, boolean loaded) {
+            // noisy - trace only
+        }
+
+        @Override
+        public void onTransformation(TypeDescription typeDescription, ClassLoader classLoader,
+                                     JavaModule module, boolean loaded, DynamicType dynamicType) {
+            logger.info("BP '{}': Successfully transformed {} (loaded={}, classLoader={})",
+                    bpKey, typeDescription.getName(), loaded, classLoader);
+            System.out.println("[Bytesight-BP] '" + bpKey + "': Successfully transformed "
+                    + typeDescription.getName() + " (loaded=" + loaded + ")");
+        }
+
+        @Override
+        public void onIgnored(TypeDescription typeDescription, ClassLoader classLoader,
+                              JavaModule module, boolean loaded) {
+            // expected for non-matching types
+        }
+
+        @Override
+        public void onError(String typeName, ClassLoader classLoader, JavaModule module,
+                            boolean loaded, Throwable throwable) {
+            logger.error("BP '{}': Error transforming {}: {}", bpKey, typeName, throwable.getMessage(), throwable);
+            System.err.println("[Bytesight-BP] '" + bpKey + "': ERROR transforming " + typeName
+                    + ": " + throwable.getMessage());
+            throwable.printStackTrace();
+        }
+
+        @Override
+        public void onComplete(String typeName, ClassLoader classLoader, JavaModule module, boolean loaded) {
+            // noisy - trace only
         }
     }
 }
