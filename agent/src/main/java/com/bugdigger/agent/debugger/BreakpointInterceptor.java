@@ -27,27 +27,29 @@ public class BreakpointInterceptor {
             @Advice.AllArguments Object[] arguments,
             @Advice.Origin Method method
     ) {
-        System.out.println("[Bytesight-BP] ADVICE onEnter fired: " + className + "#" + methodName + methodSignature);
         try {
             BreakpointManager manager = BreakpointManager.getInstance();
-            if (manager == null) {
-                System.out.println("[Bytesight-BP] onEnter: BreakpointManager.getInstance() == null");
-                return;
-            }
+            if (manager == null) return;
 
             String bpId = manager.findEntryBreakpoint(className, methodName, methodSignature);
-            if (bpId == null) {
-                System.out.println("[Bytesight-BP] onEnter: no enabled entry breakpoint for " + className + "#" + methodName + methodSignature);
-                return;
-            }
-            System.out.println("[Bytesight-BP] onEnter: HIT bp='" + bpId + "' on thread " + Thread.currentThread().getName());
+            if (bpId == null) return;
 
             Thread current = Thread.currentThread();
             BreakpointHit hit = FrameCapture.captureBreakpointHit(
                     bpId, className, methodName, methodSignature, self, arguments, method);
 
             DebuggerEventBuffer buffer = DebuggerEventBuffer.getInstance();
-            buffer.emitBreakpointHit(hit);
+            // Cache frame for any subsequent step request, regardless of whether
+            // this hit was itself a step completion.
+            StepController stepCtrl = StepController.getInstance();
+            if (stepCtrl != null) {
+                stepCtrl.noteParkedFrame(current.getId(), className, methodName, methodSignature, 0);
+            }
+            boolean stepCompleted = stepCtrl != null
+                    && stepCtrl.tryCompleteStep(bpId, current.getId(), hit.getTopFrame());
+            if (!stepCompleted) {
+                buffer.emitBreakpointHit(hit);
+            }
             buffer.emitThreadState(current.getId(), current.getName(), ThreadState.THREAD_STATE_SUSPENDED);
 
             ThreadRegistry.getInstance().parkCurrent();
@@ -81,7 +83,15 @@ public class BreakpointInterceptor {
                     bpId, className, methodName, methodSignature, line);
 
             DebuggerEventBuffer buffer = DebuggerEventBuffer.getInstance();
-            buffer.emitBreakpointHit(hit);
+            StepController stepCtrl = StepController.getInstance();
+            if (stepCtrl != null) {
+                stepCtrl.noteParkedFrame(current.getId(), className, methodName, methodSignature, line);
+            }
+            boolean stepCompleted = stepCtrl != null
+                    && stepCtrl.tryCompleteStep(bpId, current.getId(), hit.getTopFrame());
+            if (!stepCompleted) {
+                buffer.emitBreakpointHit(hit);
+            }
             buffer.emitThreadState(current.getId(), current.getName(), ThreadState.THREAD_STATE_SUSPENDED);
 
             ThreadRegistry.getInstance().parkCurrent();
@@ -102,7 +112,6 @@ public class BreakpointInterceptor {
             @Advice.AllArguments Object[] arguments,
             @Advice.Origin Method method
     ) {
-        System.out.println("[Bytesight-BP] ADVICE onExit fired: " + className + "#" + methodName + methodSignature);
         try {
             BreakpointManager manager = BreakpointManager.getInstance();
             if (manager == null) return;
@@ -115,7 +124,15 @@ public class BreakpointInterceptor {
                     bpId, className, methodName, methodSignature, self, arguments, method);
 
             DebuggerEventBuffer buffer = DebuggerEventBuffer.getInstance();
-            buffer.emitBreakpointHit(hit);
+            StepController stepCtrl = StepController.getInstance();
+            if (stepCtrl != null) {
+                stepCtrl.noteParkedFrame(current.getId(), className, methodName, methodSignature, 0);
+            }
+            boolean stepCompleted = stepCtrl != null
+                    && stepCtrl.tryCompleteStep(bpId, current.getId(), hit.getTopFrame());
+            if (!stepCompleted) {
+                buffer.emitBreakpointHit(hit);
+            }
             buffer.emitThreadState(current.getId(), current.getName(), ThreadState.THREAD_STATE_SUSPENDED);
 
             ThreadRegistry.getInstance().parkCurrent();

@@ -69,6 +69,9 @@ fun DebuggerScreen(
             onResumeAll = viewModel::resumeAll,
             onResumeCurrent = viewModel::resumeCurrentThread,
             onStop = viewModel::stopDebugging,
+            onStepOver = viewModel::stepOver,
+            onStepInto = viewModel::stepInto,
+            onStepOut = viewModel::stepOut,
         )
 
         if (busy) {

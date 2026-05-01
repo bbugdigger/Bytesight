@@ -32,6 +32,9 @@ fun ControlBar(
     onResumeAll: () -> Unit,
     onResumeCurrent: () -> Unit,
     onStop: () -> Unit,
+    onStepOver: () -> Unit = {},
+    onStepInto: () -> Unit = {},
+    onStepOut: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -53,7 +56,43 @@ fun ControlBar(
         ) {
             Text("▶▶ Resume all ($suspendedCount)", color = Color.White)
         }
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(16.dp))
+        // Step controls — enabled only when the current thread is suspended.
+        // Step Over: next line in same method. Step Into: into a callee or
+        // fall through to next line. Step Out: to current method's exit.
+        TooltipBox(
+            positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+            tooltip = { PlainTooltip { Text("Step Over — next line in same method") } },
+            state = rememberTooltipState(),
+        ) {
+            OutlinedButton(onClick = onStepOver, enabled = canResume,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)) {
+                Text("⤳ Over", color = Color.White)
+            }
+        }
+        Spacer(Modifier.width(4.dp))
+        TooltipBox(
+            positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+            tooltip = { PlainTooltip { Text("Step Into — into a callee, or next line") } },
+            state = rememberTooltipState(),
+        ) {
+            OutlinedButton(onClick = onStepInto, enabled = canResume,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)) {
+                Text("↘ Into", color = Color.White)
+            }
+        }
+        Spacer(Modifier.width(4.dp))
+        TooltipBox(
+            positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+            tooltip = { PlainTooltip { Text("Step Out — to exit of current method") } },
+            state = rememberTooltipState(),
+        ) {
+            OutlinedButton(onClick = onStepOut, enabled = canResume,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)) {
+                Text("↗ Out", color = Color.White)
+            }
+        }
+        Spacer(Modifier.width(16.dp))
         OutlinedButton(
             onClick = onStop,
             enabled = breakpointCount > 0 || suspendedCount > 0,

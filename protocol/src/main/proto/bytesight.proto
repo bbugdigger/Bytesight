@@ -45,6 +45,7 @@ service BytesightAgent {
     rpc SubscribeDebuggerEvents(SubscribeRequest) returns (stream DebuggerEvent);
     rpc Resume(ResumeRequest) returns (ResumeResponse);
     rpc Pause(PauseRequest) returns (PauseResponse);
+    rpc Step(StepRequest) returns (StepResponse);
 }
 
 // ============================================================================
@@ -464,8 +465,33 @@ message DebuggerEvent {
     oneof kind {
         BreakpointHit hit = 10;
         ThreadStateChanged thread = 11;
-        // reserved 12-19 for Phase 2+ (StepCompleted, ExceptionThrown, ...)
+        StepCompleted step = 12;
+        // reserved 13-19 for Phase 2+ (ExceptionThrown, ...)
     }
+}
+
+message StepRequest {
+    int64 thread_id = 1;
+    StepKind kind = 2;
+}
+
+message StepResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+enum StepKind {
+    STEP_OVER = 0;                  // Land at next executed line in same method (or method exit)
+    STEP_INTO = 1;                  // Land at first line of next-called method (or fall through to STEP_OVER)
+    STEP_OUT = 2;                   // Land at exit of current method
+}
+
+message StepCompleted {
+    int64 thread_id = 1;
+    string thread_name = 2;
+    StepKind kind = 3;
+    FrameSnapshot top_frame = 4;
+    repeated FrameSnapshot stack = 5;
 }
 
 message BreakpointHit {

@@ -368,6 +368,24 @@ class AgentClient {
     }
 
     /**
+     * Steps the given thread one source line. The agent installs transient
+     * breakpoints based on [kind] and resumes the thread; a [DebuggerEvent.step]
+     * arrives via [streamDebuggerEvents] when the step lands.
+     */
+    suspend fun step(
+        connectionKey: String,
+        threadId: Long,
+        kind: StepKind,
+    ): Result<StepResponse> = withContext(Dispatchers.IO) {
+        withConnection(connectionKey) { stub ->
+            stub.step(stepRequest {
+                this.threadId = threadId
+                this.kind = kind
+            })
+        }
+    }
+
+    /**
      * Pauses threads. v1 agent returns an error — pause-outside-breakpoint is not implemented.
      */
     suspend fun pause(

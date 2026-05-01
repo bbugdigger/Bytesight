@@ -7,6 +7,7 @@ import com.bugdigger.bytesight.debugger.ExecutionCursor
 import com.bugdigger.bytesight.service.AgentClient
 import com.bugdigger.protocol.Breakpoint
 import com.bugdigger.protocol.MethodBreakpointMode
+import com.bugdigger.protocol.StepKind
 import com.bugdigger.protocol.breakpoint
 import com.bugdigger.protocol.lineLocation
 import com.bugdigger.protocol.methodLocation
@@ -248,6 +249,25 @@ class DebuggerViewModel(
     }
 
     fun resumeAll() = resume(0L)
+
+    /** Step the current thread one source line; lands at next line in same method. */
+    fun stepOver() = step(StepKind.STEP_OVER)
+    /** Step into a callee on the current line, falling through to step-over otherwise. */
+    fun stepInto() = step(StepKind.STEP_INTO)
+    /** Step out of the current method; lands at method exit. */
+    fun stepOut() = step(StepKind.STEP_OUT)
+
+    private fun step(kind: StepKind) {
+        val key = connectionKey ?: return
+        val tid = currentThreadId.value ?: return
+        viewModelScope.launch {
+            agentClient.step(key, tid, kind).onSuccess { resp ->
+                if (!resp.success) {
+                    _error.value = resp.error.ifEmpty { "Failed to step ($kind)" }
+                }
+            }.onFailure { e -> _error.value = "Failed to step: ${e.message}" }
+        }
+    }
 
     fun stopDebugging() {
         val key = connectionKey ?: return

@@ -5,6 +5,7 @@ import com.bugdigger.bytesight.service.ConnectionRegistry
 import com.bugdigger.protocol.BreakpointHit
 import com.bugdigger.protocol.DebuggerEvent
 import com.bugdigger.protocol.FrameSnapshot
+import com.bugdigger.protocol.StepCompleted
 import com.bugdigger.protocol.ThreadState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -83,6 +84,7 @@ class LiveCursor(
     private fun handleEvent(event: DebuggerEvent) {
         when (event.kindCase) {
             DebuggerEvent.KindCase.HIT -> handleHit(event.hit)
+            DebuggerEvent.KindCase.STEP -> handleStep(event.step)
             DebuggerEvent.KindCase.THREAD -> {
                 val t = event.thread
                 updateThread(t.threadId, t.threadName, t.state)
@@ -99,6 +101,23 @@ class LiveCursor(
             _currentThreadId.value = hit.threadId
             _callStack.value = hit.stackList
             _currentFrame.value = hit.topFrame
+        }
+    }
+
+    /**
+     * Step landing — semantically equivalent to a breakpoint hit (the thread
+     * suspends at the new location), so we update the same UI state. The
+     * absence of a BreakpointHit here is deliberate: the agent's StepController
+     * suppressed the hit emit because the bp was a transient step probe, not a
+     * user-set bp.
+     */
+    private fun handleStep(step: StepCompleted) {
+        threadStacks[step.threadId] = step.stackList
+        updateThread(step.threadId, step.threadName, ThreadState.THREAD_STATE_SUSPENDED)
+        if (_currentThreadId.value == null || _currentThreadId.value == step.threadId) {
+            _currentThreadId.value = step.threadId
+            _callStack.value = step.stackList
+            _currentFrame.value = step.topFrame
         }
     }
 

@@ -2,6 +2,7 @@ package com.bugdigger.agent.debugger;
 
 import com.bugdigger.protocol.BreakpointHit;
 import com.bugdigger.protocol.DebuggerEvent;
+import com.bugdigger.protocol.StepCompleted;
 import com.bugdigger.protocol.ThreadState;
 import com.bugdigger.protocol.ThreadStateChanged;
 import org.slf4j.Logger;
@@ -56,6 +57,15 @@ public class DebuggerEventBuffer {
                 .setSequenceId(sequenceCounter.incrementAndGet())
                 .setTimestampNs(System.nanoTime())
                 .setHit(hit)
+                .build();
+        broadcast(event);
+    }
+
+    public void emitStepCompleted(StepCompleted step) {
+        DebuggerEvent event = DebuggerEvent.newBuilder()
+                .setSequenceId(sequenceCounter.incrementAndGet())
+                .setTimestampNs(System.nanoTime())
+                .setStep(step)
                 .build();
         broadcast(event);
     }

@@ -260,10 +260,9 @@ public class BreakpointManager {
         InstalledLineTransformer existing = installedLine.get(target.className);
         if (existing != null) {
             existing.refCount++;
-            // Already installed — but a new line in the same class may now be
-            // active. The transformer reads activeLines lazily at probe-injection
-            // time; we still need to retransform so the new line gets a probe.
-            retransformClass(target.className);
+            // No retransform needed: probes are pre-injected on every line
+            // when the first bp installs the transformer, so a new line bp is
+            // just an index update — in-progress frames see it immediately.
             return;
         }
 
@@ -510,12 +509,9 @@ public class BreakpointManager {
                 public MethodVisitor visitMethod(int access, String name, String descriptor,
                                                  String signature, String[] exceptions) {
                     MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
-                    BreakpointManager mgr = BreakpointManager.getInstance();
-                    if (mgr == null) return mv;
-                    Set<Integer> activeLines = mgr.activeLinesFor(classNameJls);
-                    if (activeLines.isEmpty()) return mv;
+                    if (mv == null) return null;
                     return new LineProbeMethodVisitor(
-                            Opcodes.ASM9, mv, classNameJls, name, descriptor, activeLines);
+                            Opcodes.ASM9, mv, classNameJls, name, descriptor);
                 }
             };
         }

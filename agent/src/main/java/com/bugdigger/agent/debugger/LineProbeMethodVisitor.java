@@ -5,19 +5,21 @@ import net.bytebuddy.jar.asm.Label;
 import net.bytebuddy.jar.asm.MethodVisitor;
 import net.bytebuddy.jar.asm.Opcodes;
 
-import java.util.Set;
-
 /**
  * ASM {@link MethodVisitor} that injects an {@code INVOKESTATIC} call to
  * {@link BreakpointInterceptor#onLineHit(String, String, String, int)} at the
- * start of each source line that has an active line breakpoint.
+ * start of <em>every</em> source line in a method.
  *
- * <p>For each line emitted via {@code visitLineNumber(line, label)}, if the
- * line is in {@code activeLines} we set a "next instruction needs a probe"
- * flag and emit the probe immediately before the next bytecode instruction
- * the visitor sees. This places the probe at the bytecode offset of the line's
- * first instruction — equivalent to what JVMTI {@code SetBreakpoint} on a
- * {@code (jmethodID, jlocation)} would do.
+ * <p>The probe is unconditional: it always fires, and {@code onLineHit}
+ * consults {@link BreakpointManager#findLineBreakpoint(String, int)} at runtime
+ * to decide whether the hit corresponds to an active bp. This costs one
+ * static call per line per execution, but avoids a fundamental retransform
+ * limitation: classes that are currently executing on a parked thread cannot
+ * have <em>new</em> probes added — the in-progress frame keeps executing the
+ * pre-retransform bytecode. By probing every line up front when the first bp
+ * for the class is installed, subsequent additions (including the transient
+ * line bps that drive Step Over / Step Into) are an index-only update that
+ * works on the in-progress frame.
  *
  * <p>The same source line can appear multiple times in {@code LineNumberTable}
  * (e.g. iterations of a loop body, conditional branches that re-enter the same
@@ -34,28 +36,23 @@ final class LineProbeMethodVisitor extends MethodVisitor {
     private final String classNameJls;       // "com.example.Foo"
     private final String methodInternalName; // "bar" or "<init>"
     private final String methodDescriptor;   // "(I)V"
-    private final Set<Integer> activeLines;
     private int pendingLine = -1;
 
     LineProbeMethodVisitor(int api,
                            MethodVisitor mv,
                            String classNameJls,
                            String methodInternalName,
-                           String methodDescriptor,
-                           Set<Integer> activeLines) {
+                           String methodDescriptor) {
         super(api, mv);
         this.classNameJls = classNameJls;
         this.methodInternalName = methodInternalName;
         this.methodDescriptor = methodDescriptor;
-        this.activeLines = activeLines;
     }
 
     @Override
     public void visitLineNumber(int line, Label start) {
         super.visitLineNumber(line, start);
-        if (activeLines.contains(line)) {
-            pendingLine = line;
-        }
+        pendingLine = line;
     }
 
     private void emitProbeIfPending() {

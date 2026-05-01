@@ -5,6 +5,7 @@ import com.bugdigger.agent.collector.LoadedClassInfo;
 import com.bugdigger.agent.debugger.BreakpointManager;
 import com.bugdigger.agent.debugger.DebuggerEventBuffer;
 import com.bugdigger.agent.debugger.NativeDebuggerBridge;
+import com.bugdigger.agent.debugger.StepController;
 import com.bugdigger.agent.debugger.ThreadRegistry;
 import com.bugdigger.agent.heap.HeapInspector;
 import com.bugdigger.agent.heap.HeapSnapshotManager;
@@ -35,6 +36,7 @@ public class BytesightAgentService extends BytesightAgentGrpc.BytesightAgentImpl
     private final HookManager hookManager;
     private final HeapSnapshotManager heapSnapshotManager;
     private final BreakpointManager breakpointManager;
+    private final StepController stepController;
     private final long startTime;
 
     public BytesightAgentService(Instrumentation instrumentation, ClassCollector classCollector,
@@ -45,6 +47,7 @@ public class BytesightAgentService extends BytesightAgentGrpc.BytesightAgentImpl
         this.hookManager = hookManager;
         this.heapSnapshotManager = heapSnapshotManager;
         this.breakpointManager = breakpointManager;
+        this.stepController = new StepController(breakpointManager, classCollector);
         this.startTime = System.currentTimeMillis();
     }
     
@@ -579,6 +582,18 @@ public class BytesightAgentService extends BytesightAgentGrpc.BytesightAgentImpl
                 .setSuccess(true)
                 .setResumedCount(unparked + natively)
                 .build());
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void step(StepRequest request, StreamObserver<StepResponse> responseObserver) {
+        long threadId = request.getThreadId();
+        StepKind kind = request.getKind();
+        StepController.Result result = stepController.requestStep(threadId, kind);
+        StepResponse.Builder resp = StepResponse.newBuilder().setSuccess(result.isSuccess());
+        if (!result.isSuccess()) resp.setError(result.getError() == null ? "" : result.getError());
+        logger.info("step called threadId={} kind={} success={}", threadId, kind, result.isSuccess());
+        responseObserver.onNext(resp.build());
         responseObserver.onCompleted();
     }
 
