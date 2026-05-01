@@ -282,3 +282,69 @@ Proto field numbers explicitly reserve space for Phase 2+ fields so future addit
 - Time-Travel Debugging (record, replay, timeline scrubber, reverse-step) — Phase 4
 
 The `ExecutionCursor` indirection and the proto's reserved field numbers mean each of these is additive, not a rewrite.
+
+---
+
+## Phase 2 — implemented (hybrid ByteBuddy + slim JVMTI)
+
+Phase 2 ships **line breakpoints anywhere in a method, Step Over/Into/Out, conditional breakpoints, hit count, decompiled-line breakpoints, and a real Pause RPC**. Implementation plan: see `~/.claude/plans/ok-so-this-is-fluttering-cloud.md`. Commit range on `debugger`: `d4d4daf..165b729`.
+
+### Architectural pivot from the original Phase 2 plan
+
+The plan called for a native JVMTI agent in C++ providing real `SetBreakpoint`/`SingleStep`/`GetLocalVariable*` semantics. **HotSpot 21 refuses 6 of the 10 capabilities we need at runtime attach** (`can_generate_breakpoint_events`, `can_generate_single_step_events`, `can_generate_frame_pop_events`, `can_generate_method_entry_events`, `can_generate_method_exit_events`, `can_access_local_variables` — see `agent/src/main/cpp/src/debugger/agent_init.cpp` for the working set). These are documented as *Phase: onload-only* in HotSpot's `jvmtiManageCapabilities.cpp` — they require iterating every loaded method at acquisition time, which HotSpot won't do post-VM-init.
+
+JDWP doesn't help: `jdwp.dll` doesn't export `Agent_OnAttach` on JDK 13+, so it can't be loaded into a running JVM either.
+
+The conclusion: **on HotSpot, full JVMTI debugging on an already-running JVM is impossible.** Bytesight therefore keeps ByteBuddy as the breakpoint mechanism (no special caps required) and uses a slim JVMTI native helper only for the things that *do* work in the live phase: `can_suspend` (real Pause via `SuspendThread`) and `can_get_line_numbers`. The native module lives at `agent/src/main/cpp/src/debugger/` as `bytesight_debugger.dll` next to `bytesight_heap.dll`.
+
+### Loading the native helper
+
+The DLL has to enter via `Agent_OnAttach` (live-phase capability acquisition), not `JNI_OnLoad`. composeApp's `AttachService.attachAgent`:
+
+1. Extracts `bytesight_debugger.dll` from the agent JAR to a temp file.
+2. Passes the path via the agent argument `debuggerDllPath=...` so the Java agent can `System.load()` the same file (binds JNI symbols).
+3. After `vm.loadAgent(agentJar, ...)`, calls `vm.loadAgentPath(dllPath)` to trigger `Agent_OnAttach`.
+
+One OS mapping, two JVM-level registrations. `NativeDebuggerBridge.isAvailable()` reports the combined state.
+
+### Line breakpoints (`agent/.../debugger/LineProbeMethodVisitor`)
+
+Every line of every method in any class with at least one bp gets an unconditional `INVOKESTATIC BreakpointInterceptor.onLineHit(class, method, sig, line)` probe at the bytecode offset of the line's first instruction. `onLineHit` consults `BreakpointManager.findLineBreakpoint(class, line)` at runtime — fast `Map.get` for inactive lines.
+
+Probes are pre-injected on every line at first-bp install because **class retransformation cannot patch frames already executing** — the in-progress frame keeps running the pre-retransform bytecode. Pre-probing is what makes mid-execution bp adds (specifically the transient bps Step Over installs) take effect on the suspended frame when it resumes.
+
+### Stepping (`agent/.../debugger/StepController`)
+
+Without JVMTI single-step, stepping is "fan out transient breakpoints, first to fire wins":
+
+| Step kind | Transient bps installed |
+|-----------|-------------------------|
+| Step Over | Line bp on every other line in current method + method-exit bp |
+| Step Into | All Step Over transients + method-entry bp on every callee statically reachable via `INVOKE*` (extracted by `MethodAnalyzer` from the cached class bytes) |
+| Step Out  | Just the method-exit bp on the current method |
+
+When any transient fires, `StepController.tryCompleteStep` removes its siblings and emits a `StepCompleted` event instead of a normal `BreakpointHit`. Step Into is best-effort for virtual dispatch — it bps the static target class, not the actual subclass override. Step Out parks at the current method's exit (still inside the frame); a Resume click then returns to caller.
+
+### Conditional bps + hit count (`agent/.../debugger/condition/ConditionEvaluator`)
+
+A small expression language: literals, identifiers, `this.field`, arithmetic, comparisons, logical with short-circuit, parens. Identifier resolution: method args by name (or `arg0..argN` fallback when `-parameters` wasn't compiled in) → `this.field`. Parse + eval errors **fail open** — the bp still suspends with a warning so the user is never surprised by a silently-broken condition.
+
+`BreakpointManager.recordAndEvaluate` is the gating hook called from every `BreakpointInterceptor` path. Increments `hit_count` unconditionally, then checks `skip_count`, then evaluates the condition. The `UpdateBreakpoint` RPC mutates these fields in place — no remove + reinstall.
+
+**Line-bp limitation**: line probes don't have access to args/this/method, so conditions on line bps run with a null context. Lifting this requires the Phase 3 per-bp synthetic probe pattern.
+
+### Decompiled-line breakpoints
+
+`VineflowerDecompiler` now captures the previously-discarded `mapping: IntArray?` from `acceptClass` and `saveClassFile` and exposes it as `DecompiledLineMap` on `DecompilationResult.Success`. `DecompilerOptions.bytecodeSourceMapping` defaults to true. The Inspector decompiled-tab gutter resolves clicks via `originalLineFor` / `findNearbyOriginalLine` (round-down for unmapped clicks) and renders red bp dots on decompiled lines that map to currently-active bytecode bps via `decompiledLinesFor` (inverse lookup).
+
+### What this Phase 2 PR does NOT do
+
+Still on the roadmap, mostly because they're either OnLoad-only-cap dependent or genuinely deferred:
+
+- Full LVT locals capture — needs `can_access_local_variables` (OnLoad-only) or per-bp synthetic probe.
+- Logpoints, watches panel, evaluate-expression UI.
+- Field watchpoints, exception breakpoints.
+- Class reload (`redefineClasses`), break-on-classload.
+- Time-Travel Debugging.
+
+The `ExecutionCursor` abstraction is honored end-to-end (the UI never bypasses it), so a future `ReplayCursor` for TTD remains a drop-in.
