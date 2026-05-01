@@ -83,6 +83,17 @@ class TraceViewModel(
     fun setConnectionKey(key: String) {
         if (connectionKey != key) {
             connectionKey = key
+            // The previous attach's hooks + trace events + class selection are
+            // bound to a JVM that's no longer there. Reset everything except
+            // user preferences (maxEvents, autoScroll, hook-form draft).
+            streamingJob?.cancel()
+            streamingJob = null
+            val prev = _uiState.value
+            _uiState.value = TraceUiState(
+                maxEvents = prev.maxEvents,
+                autoScroll = prev.autoScroll,
+                newHookType = prev.newHookType,
+            )
             loadClasses()
             refreshHooks()
         }

@@ -53,14 +53,23 @@ val appModule = module {
     single { get<BytesightAgentServices>() as BytesightAgentServicesImpl }
 
     // ViewModels
+    //
+    // Most analytical tabs are singletons so their selection (class, method,
+    // filters, etc.) survives tab switches. Each promoted VM resets its
+    // user-facing state in setConnectionKey on a key change, so attaching to
+    // a different JVM doesn't leak stale data from the previous attach.
+    //
+    // AttachViewModel + SettingsViewModel stay as factories: Attach has no
+    // meaningful per-session state (you re-pick a process every time anyway),
+    // and Settings is just a thin form over AgentConfigStore.
     factoryOf(::AttachViewModel)
-    factoryOf(::ClassBrowserViewModel)
-    factoryOf(::HierarchyViewModel)
-    factoryOf(::InspectorViewModel)
-    factoryOf(::StringsViewModel)
-    factoryOf(::TraceViewModel)
-    factoryOf(::HeapViewModel)
-    factoryOf(::DebuggerViewModel)
     factoryOf(::SettingsViewModel)
-    factoryOf(::AIViewModel)
+    singleOf(::ClassBrowserViewModel)
+    singleOf(::HierarchyViewModel)
+    singleOf(::InspectorViewModel)
+    singleOf(::StringsViewModel)
+    singleOf(::TraceViewModel)
+    singleOf(::HeapViewModel)
+    singleOf(::DebuggerViewModel)
+    singleOf(::AIViewModel)
 }

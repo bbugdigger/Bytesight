@@ -56,10 +56,20 @@ class StringsViewModel(
     }
 
     /**
-     * Sets the connection key for agent communication.
+     * Sets the connection key for agent communication. On a key change, clears
+     * the previous attach's extracted constants while preserving filter
+     * preferences (typeFilter, patternFilter).
      */
     fun setConnectionKey(key: String) {
-        connectionKey = key
+        if (connectionKey != key) {
+            connectionKey = key
+            val prev = _uiState.value
+            _uiState.value = StringsUiState(
+                typeFilter = prev.typeFilter,
+                patternFilter = prev.patternFilter,
+                renames = prev.renames,
+            )
+        }
     }
 
     /**

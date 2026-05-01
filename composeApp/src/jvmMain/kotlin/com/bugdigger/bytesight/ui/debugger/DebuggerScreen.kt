@@ -37,7 +37,7 @@ import com.bugdigger.protocol.ThreadState
 fun DebuggerScreen(
     viewModel: DebuggerViewModel,
     connectionKey: String,
-    onNavigateToInspector: (className: String) -> Unit,
+    onNavigateToInspector: (className: String, methodName: String?, methodSignature: String?) -> Unit,
     onAskAI: (prompt: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -117,7 +117,15 @@ fun DebuggerScreen(
                     frames = callStack,
                     selectedFrame = currentFrame,
                     onSelectFrame = viewModel::selectFrame,
-                    onOpenInInspector = { frame -> onNavigateToInspector(frame.className) },
+                    onOpenInInspector = { frame ->
+                        // Carry the frame's method + JVM-descriptor signature so
+                        // Inspector preselects the method dropdown, not just the class.
+                        onNavigateToInspector(
+                            frame.className,
+                            frame.methodName.ifEmpty { null },
+                            frame.signature.ifEmpty { null },
+                        )
+                    },
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                 )
             }

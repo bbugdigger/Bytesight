@@ -112,6 +112,12 @@ class InspectorViewModel(
     fun setConnectionKey(key: String) {
         if (connectionKey != key) {
             connectionKey = key
+            // The previous attach's class list and any drilled-into selection
+            // are meaningless against a new JVM. Reset, but keep the user's
+            // view-mode preference (LINEAR vs CFG).
+            val prev = _innerState.value
+            _innerState.value = InspectorUiState(viewMode = prev.viewMode)
+            cachedBytecode = null
             loadClasses()
         }
     }

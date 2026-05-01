@@ -84,7 +84,20 @@ class HeapViewModel(
     private val sugiyamaLayout = SugiyamaLayout(horizontalSpacing = 60f, verticalSpacing = 80f)
 
     fun setConnectionKey(key: String) {
-        connectionKey = key
+        if (connectionKey != key) {
+            connectionKey = key
+            // Heap state is per-process: snapshots from a previous attach are
+            // meaningless against a new JVM. Reset everything user-facing while
+            // preserving UI preferences (sort mode, dup thresholds, active tab).
+            val prev = _uiState.value
+            _uiState.value = HeapUiState(
+                sortMode = prev.sortMode,
+                activeTab = prev.activeTab,
+                searchMode = prev.searchMode,
+                dupMinCount = prev.dupMinCount,
+                dupMinLength = prev.dupMinLength,
+            )
+        }
     }
 
     fun capture() {

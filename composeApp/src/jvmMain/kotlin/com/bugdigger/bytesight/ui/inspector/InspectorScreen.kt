@@ -48,6 +48,8 @@ fun InspectorScreen(
     viewModel: InspectorViewModel,
     connectionKey: String,
     pendingClassName: String? = null,
+    pendingMethodName: String? = null,
+    pendingMethodSignature: String? = null,
     onPendingClassConsumed: () -> Unit = {},
     onAskAI: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
@@ -64,13 +66,27 @@ fun InspectorScreen(
         viewModel.setConnectionKey(connectionKey)
     }
 
-    // When navigating from Heap with a pending class, auto-select it once classes are loaded.
-    LaunchedEffect(pendingClassName) {
+    // When navigating from another tab with a pending class (and optionally
+    // method), auto-select once classes are loaded. Used by both Heap "Inspect"
+    // (class only) and Debugger Call Stack "Inspect" (class + method + sig).
+    LaunchedEffect(pendingClassName, pendingMethodName, pendingMethodSignature) {
         if (pendingClassName != null) {
             // Wait for classes to be loaded (setConnectionKey triggers loadClasses)
             snapshotFlow { viewModel.uiState.value.classes }
                 .first { it.isNotEmpty() }
             viewModel.selectClass(pendingClassName)
+            if (pendingMethodName != null) {
+                // selectClass disassembles the class and populates `methods`
+                // asynchronously — wait for that, then pick the right method.
+                val method = snapshotFlow { viewModel.uiState.value.disassembledClass?.methods }
+                    .first { !it.isNullOrEmpty() }
+                    .orEmpty()
+                    .firstOrNull { m ->
+                        m.name == pendingMethodName &&
+                            (pendingMethodSignature.isNullOrEmpty() || m.descriptor == pendingMethodSignature)
+                    }
+                if (method != null) viewModel.selectMethod(method.name, method.descriptor)
+            }
             onPendingClassConsumed()
         }
     }
