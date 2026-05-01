@@ -4,6 +4,7 @@ import com.bugdigger.agent.collector.ClassCollector;
 import com.bugdigger.agent.collector.LoadedClassInfo;
 import com.bugdigger.agent.debugger.BreakpointManager;
 import com.bugdigger.agent.debugger.DebuggerEventBuffer;
+import com.bugdigger.agent.debugger.NativeDebuggerBridge;
 import com.bugdigger.agent.debugger.ThreadRegistry;
 import com.bugdigger.agent.heap.HeapInspector;
 import com.bugdigger.agent.heap.HeapSnapshotManager;
@@ -559,24 +560,54 @@ public class BytesightAgentService extends BytesightAgentGrpc.BytesightAgentImpl
     @Override
     public void resume(ResumeRequest request, StreamObserver<ResumeResponse> responseObserver) {
         long threadId = request.getThreadId();
-        int resumed = ThreadRegistry.getInstance().resume(threadId);
-        logger.info("resume called threadId={} resumed={}", threadId, resumed);
+        // Two suspend mechanisms can be in play:
+        //   (1) ByteBuddy advice that called LockSupport.park (breakpoint hit).
+        //       ThreadRegistry tracks parked threads + their tokens.
+        //   (2) JVMTI SuspendThread (Pause RPC). Released via native ResumeThread.
+        // Resume calls both so a thread suspended by either path is released.
+        int unparked = ThreadRegistry.getInstance().resume(threadId);
+        int natively;
+        if (threadId == 0) {
+            natively = NativeDebuggerBridge.isAvailable()
+                    ? NativeDebuggerBridge.resumeAll() : 0;
+        } else {
+            natively = NativeDebuggerBridge.isAvailable()
+                    && NativeDebuggerBridge.resumeThread(threadId) ? 1 : 0;
+        }
+        logger.info("resume called threadId={} unparked={} natively={}", threadId, unparked, natively);
         responseObserver.onNext(ResumeResponse.newBuilder()
                 .setSuccess(true)
-                .setResumedCount(resumed)
+                .setResumedCount(unparked + natively)
                 .build());
         responseObserver.onCompleted();
     }
 
     @Override
     public void pause(PauseRequest request, StreamObserver<PauseResponse> responseObserver) {
-        // v1: pause is a no-op placeholder — suspending arbitrary threads outside breakpoint
-        // advice is deferred to Phase 2 (requires either a safepoint-coordinated hook or JVMTI).
-        logger.info("pause called threadId={} (no-op in v1)", request.getThreadId());
+        long threadId = request.getThreadId();
+        if (!NativeDebuggerBridge.isAvailable()) {
+            logger.info("pause called threadId={} but native helper unavailable", threadId);
+            responseObserver.onNext(PauseResponse.newBuilder()
+                    .setSuccess(false)
+                    .setPausedCount(0)
+                    .setError("Pause unavailable: native debugger helper not loaded (" +
+                              NativeDebuggerBridge.lastError() + ")")
+                    .build());
+            responseObserver.onCompleted();
+            return;
+        }
+        int paused;
+        if (threadId == 0) {
+            // pause-all: suspend every application thread; gRPC handler + agent
+            // infrastructure are filtered out inside NativeDebuggerBridge.
+            paused = NativeDebuggerBridge.suspendAll(0);
+        } else {
+            paused = NativeDebuggerBridge.suspendThread(threadId) ? 1 : 0;
+        }
+        logger.info("pause called threadId={} paused={}", threadId, paused);
         responseObserver.onNext(PauseResponse.newBuilder()
-                .setSuccess(false)
-                .setPausedCount(0)
-                .setError("Pause-outside-breakpoint is not supported in v1")
+                .setSuccess(true)
+                .setPausedCount(paused)
                 .build());
         responseObserver.onCompleted();
     }

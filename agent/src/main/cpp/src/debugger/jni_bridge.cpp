@@ -27,4 +27,23 @@ Java_com_bugdigger_agent_debugger_NativeDebuggerBridge_nativeLastError(JNIEnv* e
     return env->NewStringUTF(bytesight::DebuggerContext::instance().last_error().c_str());
 }
 
+// Suspends the given Thread. Returns the JVMTI error code (0 on success,
+// 14 = THREAD_SUSPENDED if already suspended, etc.). -1 if the native
+// helper isn't initialized.
+JNIEXPORT jint JNICALL
+Java_com_bugdigger_agent_debugger_NativeDebuggerBridge_nativeSuspendThread(JNIEnv* /*env*/, jclass /*cls*/, jobject thread) {
+    auto& ctx = bytesight::DebuggerContext::instance();
+    if (!ctx.available() || thread == nullptr) return -1;
+    return static_cast<jint>(ctx.jvmti()->SuspendThread(static_cast<jthread>(thread)));
+}
+
+// Resumes the given Thread. Returns the JVMTI error code (0 on success,
+// 13 = THREAD_NOT_SUSPENDED if not currently suspended, etc.).
+JNIEXPORT jint JNICALL
+Java_com_bugdigger_agent_debugger_NativeDebuggerBridge_nativeResumeThread(JNIEnv* /*env*/, jclass /*cls*/, jobject thread) {
+    auto& ctx = bytesight::DebuggerContext::instance();
+    if (!ctx.available() || thread == nullptr) return -1;
+    return static_cast<jint>(ctx.jvmti()->ResumeThread(static_cast<jthread>(thread)));
+}
+
 }  // extern "C"
