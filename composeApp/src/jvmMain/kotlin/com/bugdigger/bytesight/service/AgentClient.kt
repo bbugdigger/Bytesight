@@ -320,6 +320,22 @@ class AgentClient {
     })
 
     /**
+     * Updates an existing breakpoint's mutable fields (enabled, condition,
+     * skip_count) without remove + reinstall. The agent looks up the bp by id
+     * and applies the new values; location stays as it was.
+     */
+    suspend fun updateBreakpoint(
+        connectionKey: String,
+        breakpoint: Breakpoint,
+    ): Result<BreakpointResponse> = withContext(Dispatchers.IO) {
+        withConnection(connectionKey) { stub ->
+            stub.updateBreakpoint(setBreakpointRequest {
+                this.breakpoint = breakpoint
+            })
+        }
+    }
+
+    /**
      * Removes a breakpoint by id.
      */
     suspend fun removeBreakpoint(

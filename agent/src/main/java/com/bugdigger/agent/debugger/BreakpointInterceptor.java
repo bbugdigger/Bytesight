@@ -34,6 +34,12 @@ public class BreakpointInterceptor {
             String bpId = manager.findEntryBreakpoint(className, methodName, methodSignature);
             if (bpId == null) return;
 
+            // Conditional + hit-count gating. recordAndEvaluate increments the
+            // hit counter unconditionally; the returned decision controls
+            // whether to actually suspend.
+            BreakpointManager.HitDecision decision = manager.recordAndEvaluate(bpId, self, arguments, method);
+            if (!decision.shouldSuspend) return;
+
             Thread current = Thread.currentThread();
             BreakpointHit hit = FrameCapture.captureBreakpointHit(
                     bpId, className, methodName, methodSignature, self, arguments, method);
@@ -78,6 +84,13 @@ public class BreakpointInterceptor {
             String bpId = manager.findLineBreakpoint(className, line);
             if (bpId == null) return;
 
+            // Line probes don't have access to args/this/method directly. The
+            // condition evaluator runs with a null context; bare-identifier or
+            // this.field references will fail open with a warning. Conditions
+            // that only use literals still work (rare but possible).
+            BreakpointManager.HitDecision decision = manager.recordAndEvaluate(bpId, null, null, null);
+            if (!decision.shouldSuspend) return;
+
             Thread current = Thread.currentThread();
             BreakpointHit hit = FrameCapture.captureLineHit(
                     bpId, className, methodName, methodSignature, line);
@@ -118,6 +131,9 @@ public class BreakpointInterceptor {
 
             String bpId = manager.findExitBreakpoint(className, methodName, methodSignature);
             if (bpId == null) return;
+
+            BreakpointManager.HitDecision decision = manager.recordAndEvaluate(bpId, self, arguments, method);
+            if (!decision.shouldSuspend) return;
 
             Thread current = Thread.currentThread();
             BreakpointHit hit = FrameCapture.captureBreakpointHit(

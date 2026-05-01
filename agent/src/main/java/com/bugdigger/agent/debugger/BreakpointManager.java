@@ -1,5 +1,6 @@
 package com.bugdigger.agent.debugger;
 
+import com.bugdigger.agent.debugger.condition.ConditionEvaluator;
 import com.bugdigger.protocol.Breakpoint;
 import com.bugdigger.protocol.LineLocation;
 import com.bugdigger.protocol.MethodBreakpointMode;
@@ -23,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.instrument.Instrumentation;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -32,6 +34,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Installs and removes debugger breakpoints via ByteBuddy retransformation.
@@ -136,9 +139,77 @@ public class BreakpointManager {
     public Collection<Breakpoint> list() {
         List<Breakpoint> out = new ArrayList<>(breakpoints.size());
         for (ManagedBreakpoint m : breakpoints.values()) {
-            out.add(m.proto);
+            out.add(snapshotProto(m));
         }
         return out;
+    }
+
+    /**
+     * Updates the condition / skip_count / enabled flag of an existing bp
+     * without remove + reinstall. Location and id stay the same. Other fields
+     * on the supplied {@link Breakpoint} are ignored.
+     */
+    public Result update(Breakpoint updated) {
+        ManagedBreakpoint existing = breakpoints.get(updated.getId());
+        if (existing == null) return Result.failure("Breakpoint '" + updated.getId() + "' not found");
+
+        // Build a new proto preserving the original location, applying the new mutable fields.
+        Breakpoint.Builder b = existing.proto.toBuilder()
+                .setEnabled(updated.getEnabled())
+                .setCondition(updated.getCondition() == null ? "" : updated.getCondition())
+                .setSkipCount(Math.max(0, updated.getSkipCount()));
+        existing.proto = b.build();
+        return Result.success(existing.id);
+    }
+
+    /**
+     * Called from {@link BreakpointInterceptor} on every advice/probe firing
+     * that resolved to a bp. Increments the hit counter, evaluates any
+     * condition against ({@code self}, {@code arguments}), and returns the
+     * outcome. The interceptor uses the returned {@link HitDecision} to decide
+     * whether to actually emit + park.
+     *
+     * <p>For line bps, {@code self}/{@code arguments}/{@code method} are null —
+     * conditions referencing those identifiers will hit the unknown-identifier
+     * path and fail open (suspend with a warning).
+     */
+    public HitDecision recordAndEvaluate(String bpId, Object self, Object[] arguments, Method method) {
+        ManagedBreakpoint bp = breakpoints.get(bpId);
+        if (bp == null) return HitDecision.suspend(null);
+        int newHits = bp.hits.incrementAndGet();
+        // Mirror the live count back into the proto so subsequent list() / update()
+        // round-trips reflect it. toBuilder() is cheap and hits is a plain int.
+        bp.proto = bp.proto.toBuilder().setHitCount(newHits).build();
+
+        int skip = bp.proto.getSkipCount();
+        if (skip > 0 && newHits <= skip) {
+            return HitDecision.skip();
+        }
+        String cond = bp.proto.getCondition();
+        if (cond == null || cond.isEmpty()) {
+            return HitDecision.suspend(null);
+        }
+        ConditionEvaluator.Context ctx = new ConditionEvaluator.Context(self, arguments, method);
+        ConditionEvaluator.Result r = ConditionEvaluator.evaluate(cond, ctx);
+        if (!r.shouldFire()) return HitDecision.skip();
+        return HitDecision.suspend(r.hasError() ? r.error() : null);
+    }
+
+    /** Snapshot the proto with the live hit count for list/get returns. */
+    private static Breakpoint snapshotProto(ManagedBreakpoint m) {
+        return m.proto.toBuilder().setHitCount(m.hits.get()).build();
+    }
+
+    /** Outcome of {@link #recordAndEvaluate}. */
+    public static final class HitDecision {
+        public final boolean shouldSuspend;
+        public final String warning;  // non-null when condition had an error and we're failing open
+        private HitDecision(boolean shouldSuspend, String warning) {
+            this.shouldSuspend = shouldSuspend;
+            this.warning = warning;
+        }
+        public static HitDecision suspend(String warning) { return new HitDecision(true, warning); }
+        public static HitDecision skip() { return new HitDecision(false, null); }
     }
 
     // ===== Method breakpoints =================================================
@@ -427,8 +498,11 @@ public class BreakpointManager {
 
     private static final class ManagedBreakpoint {
         final String id;
-        final Breakpoint proto;
+        // Mutable so update() and recordAndEvaluate() can refresh the
+        // condition / skip_count / hit_count fields without rebuilding state.
+        volatile Breakpoint proto;
         final Target target;
+        final AtomicInteger hits = new AtomicInteger(0);
         String methodKey;  // populated only for MethodTarget bps
 
         ManagedBreakpoint(String id, Breakpoint proto, Target target) {

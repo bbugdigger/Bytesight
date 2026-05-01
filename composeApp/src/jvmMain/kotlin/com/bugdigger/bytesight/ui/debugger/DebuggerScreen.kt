@@ -109,6 +109,8 @@ fun DebuggerScreen(
                     breakpoints = breakpoints,
                     onToggleEnabled = viewModel::toggleEnabled,
                     onRemove = viewModel::removeBreakpoint,
+                    onUpdateCondition = viewModel::updateCondition,
+                    onUpdateSkipCount = viewModel::updateSkipCount,
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                 )
                 CallStackPanel(

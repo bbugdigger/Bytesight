@@ -72,6 +72,14 @@ class DebuggerState {
         val displayLine: Int,
         val mode: MethodBreakpointMode,
         val enabled: Boolean,
+        /** Empty = unconditional. */
+        val condition: String = "",
+        /** Skip first N hits before suspending. 0 = no skip. */
+        val skipCount: Int = 0,
+        /** Server-reported total hits (incremented on every call regardless of gate). */
+        val hitCount: Int = 0,
+        /** Set when the agent's condition evaluator failed parse/eval — fail-open warning. */
+        val conditionError: String? = null,
     )
 
     data class PendingToggle(

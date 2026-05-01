@@ -204,36 +204,7 @@ class DebuggerViewModel(
         }
     }
 
-    fun toggleEnabled(id: String) {
-        val key = connectionKey ?: return
-        val bp = debuggerState.breakpoints.value.firstOrNull { it.id == id } ?: return
-        val next = !bp.enabled
-        viewModelScope.launch {
-            _busy.value = true
-            // Protocol has no update — remove + reinsert. The agent treats enabled=false as "never fire."
-            agentClient.removeBreakpoint(key, bp.id)
-            val proto = breakpoint {
-                this.id = bp.id
-                this.method = methodLocation {
-                    this.className = bp.className
-                    this.methodName = bp.methodName
-                    this.methodSignature = bp.methodSignature
-                    this.mode = bp.mode
-                }
-                this.enabled = next
-            }
-            agentClient.setBreakpoint(key, proto)
-                .onSuccess { resp ->
-                    if (resp.success) {
-                        debuggerState.updateBreakpoint(bp.id) { it.copy(enabled = next) }
-                    } else {
-                        _error.value = resp.error.ifEmpty { "Failed to toggle breakpoint" }
-                    }
-                }
-                .onFailure { e -> _error.value = "Failed to toggle breakpoint: ${e.message}" }
-            _busy.value = false
-        }
-    }
+    fun toggleEnabled(id: String) = updateMutable(id) { it.copy(enabled = !it.enabled) }
 
     fun resume(threadId: Long = 0L) {
         val key = connectionKey ?: return
@@ -249,6 +220,45 @@ class DebuggerViewModel(
     }
 
     fun resumeAll() = resume(0L)
+
+    /** Updates a bp's condition expression in-place (no remove/reinstall). */
+    fun updateCondition(bpId: String, condition: String) = updateMutable(bpId) { bp ->
+        bp.copy(condition = condition)
+    }
+
+    /** Updates a bp's skip_count (skip first N hits). */
+    fun updateSkipCount(bpId: String, skipCount: Int) = updateMutable(bpId) { bp ->
+        bp.copy(skipCount = skipCount.coerceAtLeast(0))
+    }
+
+    private fun updateMutable(bpId: String, transform: (DebuggerState.UiBreakpoint) -> DebuggerState.UiBreakpoint) {
+        val key = connectionKey ?: return
+        val current = debuggerState.breakpoints.value.firstOrNull { it.id == bpId } ?: return
+        val next = transform(current)
+        viewModelScope.launch {
+            val proto = breakpoint {
+                this.id = next.id
+                this.method = methodLocation {
+                    this.className = next.className
+                    this.methodName = next.methodName
+                    this.methodSignature = next.methodSignature
+                    this.mode = next.mode
+                }
+                this.enabled = next.enabled
+                this.condition = next.condition
+                this.skipCount = next.skipCount
+            }
+            agentClient.updateBreakpoint(key, proto)
+                .onSuccess { resp ->
+                    if (resp.success) {
+                        debuggerState.updateBreakpoint(bpId) { _ -> next }
+                    } else {
+                        _error.value = resp.error.ifEmpty { "Failed to update breakpoint" }
+                    }
+                }
+                .onFailure { e -> _error.value = "Failed to update breakpoint: ${e.message}" }
+        }
+    }
 
     /** Step the current thread one source line; lands at next line in same method. */
     fun stepOver() = step(StepKind.STEP_OVER)

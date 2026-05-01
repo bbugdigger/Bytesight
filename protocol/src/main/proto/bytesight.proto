@@ -40,6 +40,7 @@ service BytesightAgent {
 
     // Debugger
     rpc SetBreakpoint(SetBreakpointRequest) returns (BreakpointResponse);
+    rpc UpdateBreakpoint(SetBreakpointRequest) returns (BreakpointResponse);
     rpc RemoveBreakpoint(RemoveBreakpointRequest) returns (BreakpointResponse);
     rpc ListBreakpoints(ListBreakpointsRequest) returns (ListBreakpointsResponse);
     rpc SubscribeDebuggerEvents(SubscribeRequest) returns (stream DebuggerEvent);
@@ -398,7 +399,17 @@ message Breakpoint {
         MethodLocation method = 3;
     }
     bool enabled = 10;
-    // reserved 11-20 for Phase 2 (condition, hit_count, thread_filter, log_only, log_format)
+    // Server-side expression evaluated on every hit; bp suspends only if the
+    // condition is true. Empty = unconditional. Grammar: see ConditionEvaluator
+    // (literals, identifiers, this.field, comparison, logical, arithmetic).
+    string condition = 11;
+    // Skip the first N hits; bp suspends from hit N+1 onward. 0 = no skip.
+    int32 skip_count = 12;
+    // Server-populated total hit count (regardless of suspend). Read-only on
+    // SetBreakpoint requests; mirrored back on every BreakpointResponse so the
+    // UI can display "hits: K" without a separate poll.
+    int32 hit_count = 13;
+    // reserved 14-20 for thread_filter, log_only, log_format, ...
 }
 
 message LineLocation {

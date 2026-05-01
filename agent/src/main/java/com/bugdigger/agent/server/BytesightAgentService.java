@@ -526,6 +526,21 @@ public class BytesightAgentService extends BytesightAgentGrpc.BytesightAgentImpl
     }
 
     @Override
+    public void updateBreakpoint(SetBreakpointRequest request, StreamObserver<BreakpointResponse> responseObserver) {
+        Breakpoint bp = request.getBreakpoint();
+        BreakpointManager.Result result = breakpointManager.update(bp);
+        BreakpointResponse.Builder resp = BreakpointResponse.newBuilder().setSuccess(result.isSuccess());
+        if (result.isSuccess()) {
+            resp.setBreakpointId(result.getBreakpointId());
+        } else {
+            resp.setError(result.getError() == null ? "" : result.getError());
+        }
+        logger.info("updateBreakpoint id='{}' success={}", bp.getId(), result.isSuccess());
+        responseObserver.onNext(resp.build());
+        responseObserver.onCompleted();
+    }
+
+    @Override
     public void removeBreakpoint(RemoveBreakpointRequest request, StreamObserver<BreakpointResponse> responseObserver) {
         logger.info("removeBreakpoint called id='{}'", request.getBreakpointId());
         BreakpointManager.Result result = breakpointManager.remove(request.getBreakpointId());
