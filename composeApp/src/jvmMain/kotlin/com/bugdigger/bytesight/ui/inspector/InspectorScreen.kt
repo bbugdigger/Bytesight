@@ -207,11 +207,40 @@ fun InspectorScreen(
                 modifier = Modifier.weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                // Compute decompiled-line bp dots by reverse-mapping the
+                // currently-active line bps on this class through the
+                // decompiled line map (bytecode line → decompiled line).
+                val bpListForDecomp by debuggerState.breakpoints.collectAsState()
+                val decompBpLines = remember(bpListForDecomp, uiState.selectedClassName, uiState.decompiledLineMap) {
+                    val cls = uiState.selectedClassName
+                    val map = uiState.decompiledLineMap
+                    if (cls == null || map == null) emptySet()
+                    else bpListForDecomp
+                        .filter { it.className == cls && it.displayLine > 0 && it.enabled }
+                        .flatMap { map.decompiledLinesFor(it.displayLine) }
+                        .toSet()
+                }
+
                 DecompiledPanel(
                     source = uiState.displaySource ?: uiState.decompiledSource,
                     isLoading = uiState.isLoading,
                     renamedSymbols = uiState.renamedSymbols,
                     onRenameConfirm = { shortName, newName -> viewModel.renameSymbol(shortName, newName) },
+                    bpLines = decompBpLines,
+                    onLineClick = { decompiledLine ->
+                        val cls = uiState.selectedClassName ?: return@DecompiledPanel
+                        val map = uiState.decompiledLineMap ?: return@DecompiledPanel
+                        val original = map.originalLineFor(decompiledLine)
+                            ?: map.findNearbyOriginalLine(decompiledLine)
+                            ?: return@DecompiledPanel
+                        val m = uiState.selectedMethod
+                        debuggerState.requestToggleFromInspector(
+                            className = cls,
+                            methodName = m?.name ?: "",
+                            methodSignature = m?.descriptor ?: "",
+                            line = original,
+                        )
+                    },
                     modifier = Modifier.weight(1f),
                 )
 
@@ -768,6 +797,8 @@ private fun DecompiledPanel(
     isLoading: Boolean,
     renamedSymbols: Map<String, String> = emptyMap(),
     onRenameConfirm: ((String, String) -> Unit)? = null,
+    bpLines: Set<Int> = emptySet(),
+    onLineClick: ((Int) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     var renameTarget by remember { mutableStateOf<String?>(null) }
@@ -809,6 +840,8 @@ private fun DecompiledPanel(
                         onRenameRequest = if (onRenameConfirm != null) {
                             { shortName -> renameTarget = shortName }
                         } else null,
+                        bpLines = bpLines,
+                        onLineClick = onLineClick,
                     )
                 }
             }

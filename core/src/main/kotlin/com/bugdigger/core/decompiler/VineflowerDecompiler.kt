@@ -143,7 +143,12 @@ class VineflowerDecompiler(
         ) {
             val className = qualifiedName.replace('/', '.')
             val classWarnings = warnings[className] ?: emptyList()
-            results[className] = DecompilationResult.Success(content, classWarnings.toList())
+            // Vineflower passes `mapping` as a flat (decompiledLine, originalLine)
+            // array when bytecodeSourceMapping is enabled. Wrap in a queryable
+            // DecompiledLineMap so the Inspector decompiled-tab gutter can
+            // resolve clicks back to bytecode line numbers for breakpoints.
+            val lineMap = mapping?.takeIf { it.isNotEmpty() }?.let { DecompiledLineMap(it) }
+            results[className] = DecompilationResult.Success(content, classWarnings.toList(), lineMap)
         }
 
         override fun acceptDirectory(directory: String) {
@@ -184,7 +189,8 @@ class VineflowerDecompiler(
         ) {
             val className = qualifiedName.replace('/', '.')
             val classWarnings = warnings[className] ?: emptyList()
-            results[className] = DecompilationResult.Success(content, classWarnings.toList())
+            val lineMap = mapping?.takeIf { it.isNotEmpty() }?.let { DecompiledLineMap(it) }
+            results[className] = DecompilationResult.Success(content, classWarnings.toList(), lineMap)
         }
 
         override fun createArchive(path: String, archiveName: String, manifest: Manifest?) {
@@ -304,8 +310,14 @@ data class DecompilerOptions(
     val removeEmptyTryCatch: Boolean = true,
     /** Decompile lambda expressions */
     val decompileLambdas: Boolean = true,
-    /** Show bytecode source as comments */
-    val bytecodeSourceMapping: Boolean = false,
+    /**
+     * Emit bytecode-source line mappings (Vineflower's "bsm"). When enabled,
+     * the per-class result carries a [DecompiledLineMap] that the debugger
+     * uses to resolve a click on a decompiled line back to a source line for
+     * setting line breakpoints. Default: on, since the cost is small and the
+     * Inspector decompiled gutter relies on it.
+     */
+    val bytecodeSourceMapping: Boolean = true,
     /** Use record patterns (Java 16+) */
     val useRecordPatterns: Boolean = true,
     /** Indent string (spaces or tab) */

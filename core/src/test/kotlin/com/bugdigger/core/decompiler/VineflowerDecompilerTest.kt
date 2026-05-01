@@ -96,6 +96,38 @@ class VineflowerDecompilerTest {
     }
 
     @Test
+    fun `decompile populates DecompiledLineMap when bytecodeSourceMapping is on`() = runBlocking {
+        val bytecode = compileSimpleClass()
+        val decompiler = VineflowerDecompiler()  // bytecodeSourceMapping defaults to true now
+
+        val result = decompiler.decompile("TestClass", bytecode)
+        assertTrue(result is DecompilationResult.Success, "Decompilation should succeed")
+        val success = result as DecompilationResult.Success
+
+        val lineMap = success.lineMap
+        assertNotNull(lineMap, "Line map should be populated when bytecodeSourceMapping is enabled")
+        assertFalse(lineMap!!.isEmpty, "Line map should contain at least one mapping")
+
+        // The simple class has a single statement (`return "Hello, World!"`).
+        // Vineflower must map at least one decompiled line to one bytecode line.
+        val originals = lineMap.allOriginalLines()
+        assertTrue(originals.isNotEmpty(), "At least one original line must be mapped")
+        assertTrue(originals.all { it > 0 }, "Mapped original lines must be positive")
+    }
+
+    @Test
+    fun `decompile leaves lineMap null when bytecodeSourceMapping is off`() = runBlocking {
+        val bytecode = compileSimpleClass()
+        val decompiler = VineflowerDecompiler(DecompilerOptions(bytecodeSourceMapping = false))
+
+        val result = decompiler.decompile("TestClass", bytecode)
+        assertTrue(result is DecompilationResult.Success)
+        val success = result as DecompilationResult.Success
+        assertNull(success.lineMap,
+            "Line map should be null when bytecodeSourceMapping is disabled")
+    }
+
+    @Test
     fun `decompile class with generics produces valid output`() = runBlocking {
         // Arrange
         val bytecode = compileClassWithGenerics()

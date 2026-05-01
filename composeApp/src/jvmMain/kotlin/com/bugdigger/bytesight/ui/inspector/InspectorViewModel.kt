@@ -42,6 +42,13 @@ data class InspectorUiState(
     val selectedInstruction: Instruction? = null,
     val decompiledSource: String? = null,
     val displaySource: String? = null,
+    /**
+     * Maps decompiled-source line numbers to the underlying bytecode line
+     * numbers. Populated from Vineflower's `bsm` output. Null when the
+     * decompiler didn't produce a mapping. Used by the decompiled-tab gutter
+     * to set line breakpoints that resolve to a real bytecode location.
+     */
+    val decompiledLineMap: com.bugdigger.core.decompiler.DecompiledLineMap? = null,
     val renamedSymbols: Map<String, String> = emptyMap(),
     val viewMode: ViewMode = ViewMode.LINEAR,
     val cfg: ControlFlowGraph? = null,
@@ -148,6 +155,7 @@ class InspectorViewModel(
                 cfg = null,
                 graphLayout = null,
                 decompiledSource = null,
+                decompiledLineMap = null,
                 selectedBlockId = null,
                 selectedInstructionOffset = null,
                 isBlockHeaderSelected = false,
@@ -165,10 +173,12 @@ class InspectorViewModel(
 
                     val disassembled = runCatching { disassembler.disassemble(bytecode) }.getOrNull()
 
-                    val source = when (val result = decompiler.decompile(className, bytecode)) {
-                        is DecompilationResult.Success -> result.sourceCode
-                        is DecompilationResult.Failure -> "// Decompilation failed: ${result.error}"
+                    val decompResult = decompiler.decompile(className, bytecode)
+                    val source = when (decompResult) {
+                        is DecompilationResult.Success -> decompResult.sourceCode
+                        is DecompilationResult.Failure -> "// Decompilation failed: ${decompResult.error}"
                     }
+                    val lineMap = (decompResult as? DecompilationResult.Success)?.lineMap
 
                     val firstMethod = disassembled?.methods?.firstOrNull()
                     val comments = if (firstMethod != null) {
@@ -180,6 +190,7 @@ class InspectorViewModel(
                             disassembledClass = disassembled,
                             decompiledSource = source,
                             displaySource = renameStore.applyToSource(source),
+                            decompiledLineMap = lineMap,
                             renamedSymbols = renameStore.shortNameMap(),
                             selectedMethod = firstMethod,
                             methodComments = comments,
