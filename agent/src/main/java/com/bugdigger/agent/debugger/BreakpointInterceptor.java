@@ -59,6 +59,40 @@ public class BreakpointInterceptor {
         }
     }
 
+    /**
+     * Called from ASM-injected probe code at the start of each interesting source
+     * line. The {@code className} is the JLS dotted form, {@code methodName} is the
+     * internal name (e.g. {@code <init>}), {@code methodSignature} is the JVM
+     * descriptor, {@code line} is the source line number from the LineNumberTable.
+     *
+     * <p>Symbol must stay public + static — the bytecode injection uses a
+     * literal INVOKESTATIC that names this method.
+     */
+    public static void onLineHit(String className, String methodName, String methodSignature, int line) {
+        try {
+            BreakpointManager manager = BreakpointManager.getInstance();
+            if (manager == null) return;
+
+            String bpId = manager.findLineBreakpoint(className, line);
+            if (bpId == null) return;
+
+            Thread current = Thread.currentThread();
+            BreakpointHit hit = FrameCapture.captureLineHit(
+                    bpId, className, methodName, methodSignature, line);
+
+            DebuggerEventBuffer buffer = DebuggerEventBuffer.getInstance();
+            buffer.emitBreakpointHit(hit);
+            buffer.emitThreadState(current.getId(), current.getName(), ThreadState.THREAD_STATE_SUSPENDED);
+
+            ThreadRegistry.getInstance().parkCurrent();
+
+            buffer.emitThreadState(current.getId(), current.getName(), ThreadState.THREAD_STATE_RUNNING);
+        } catch (Throwable t) {
+            System.err.println("[Bytesight-Debug] ERROR in onLineHit: " + t.getClass().getName() + ": " + t.getMessage());
+            t.printStackTrace();
+        }
+    }
+
     @Advice.OnMethodExit(onThrowable = Throwable.class)
     public static void onExit(
             @Advice.Origin("#t") String className,

@@ -23,6 +23,53 @@ public final class FrameCapture {
     private FrameCapture() {
     }
 
+    /**
+     * Builds a {@link BreakpointHit} for an arbitrary-line breakpoint. Unlike
+     * {@link #captureBreakpointHit}, the line probe doesn't have access to
+     * {@code this} or method arguments at the bp site — to load them we'd need
+     * to inject local-var-loads with type-aware boxing per method, which is
+     * deferred. The caller stack and current line are captured.
+     */
+    public static BreakpointHit captureLineHit(String breakpointId,
+                                               String className,
+                                               String methodName,
+                                               String methodSignature,
+                                               int line) {
+        Thread current = Thread.currentThread();
+        StackTraceElement[] stackTrace = current.getStackTrace();
+
+        FrameSnapshot.Builder topFrame = FrameSnapshot.newBuilder()
+                .setClassName(className)
+                .setMethodName(methodName)
+                .setSignature(methodSignature == null ? "" : methodSignature)
+                .setLineNumber(Math.max(0, line));
+
+        BreakpointHit.Builder hitBuilder = BreakpointHit.newBuilder()
+                .setBreakpointId(breakpointId == null ? "" : breakpointId)
+                .setThreadId(current.getId())
+                .setThreadName(current.getName())
+                .setTopFrame(topFrame.build())
+                .addStack(topFrame.build());
+
+        boolean seenTop = false;
+        for (StackTraceElement e : stackTrace) {
+            if (isOwnStackFrame(e)) continue;
+            if (!seenTop) {
+                if (e.getClassName().equals(className) && e.getMethodName().equals(methodName)) {
+                    seenTop = true;
+                }
+                continue;
+            }
+            hitBuilder.addStack(FrameSnapshot.newBuilder()
+                    .setClassName(e.getClassName())
+                    .setMethodName(e.getMethodName())
+                    .setLineNumber(Math.max(0, e.getLineNumber()))
+                    .build());
+        }
+
+        return hitBuilder.build();
+    }
+
     public static BreakpointHit captureBreakpointHit(String breakpointId,
                                                      String className,
                                                      String methodName,

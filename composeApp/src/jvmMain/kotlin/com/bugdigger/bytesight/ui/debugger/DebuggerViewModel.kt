@@ -8,6 +8,7 @@ import com.bugdigger.bytesight.service.AgentClient
 import com.bugdigger.protocol.Breakpoint
 import com.bugdigger.protocol.MethodBreakpointMode
 import com.bugdigger.protocol.breakpoint
+import com.bugdigger.protocol.lineLocation
 import com.bugdigger.protocol.methodLocation
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -84,6 +85,16 @@ class DebuggerViewModel(
         )
         if (existing != null) {
             removeBreakpoint(existing.id)
+        } else if (toggle.line > 0) {
+            // Line-number > 0 means the user clicked a specific line in the
+            // Inspector bytecode gutter — install a true line breakpoint that
+            // fires at the bytecode offset of that source line.
+            addLineBreakpoint(
+                className = toggle.className,
+                line = toggle.line,
+                methodName = toggle.methodName,
+                methodSignature = toggle.methodSignature,
+            )
         } else {
             addMethodEntryBreakpoint(
                 className = toggle.className,
@@ -91,6 +102,48 @@ class DebuggerViewModel(
                 methodSignature = toggle.methodSignature,
                 displayLine = toggle.line,
             )
+        }
+    }
+
+    fun addLineBreakpoint(
+        className: String,
+        line: Int,
+        methodName: String,
+        methodSignature: String,
+    ) {
+        val key = connectionKey ?: return
+        val id = UUID.randomUUID().toString()
+        viewModelScope.launch {
+            _busy.value = true
+            val proto = breakpoint {
+                this.id = id
+                this.line = lineLocation {
+                    this.className = className
+                    this.lineNumber = line
+                }
+                this.enabled = true
+            }
+            agentClient.setBreakpoint(key, proto)
+                .onSuccess { resp ->
+                    if (resp.success) {
+                        debuggerState.addBreakpoint(
+                            DebuggerState.UiBreakpoint(
+                                id = id,
+                                className = className,
+                                methodName = methodName,
+                                methodSignature = methodSignature,
+                                displayLine = line,
+                                // mode is unused for line bps but the data class requires it
+                                mode = MethodBreakpointMode.METHOD_BP_ENTRY,
+                                enabled = true,
+                            ),
+                        )
+                    } else {
+                        _error.value = resp.error.ifEmpty { "Failed to install line breakpoint" }
+                    }
+                }
+                .onFailure { e -> _error.value = "Failed to install line breakpoint: ${e.message}" }
+            _busy.value = false
         }
     }
 
