@@ -2,20 +2,37 @@ package com.bugdigger.bytesight.ui.debugger
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bugdigger.bytesight.debugger.CursorMode
 import com.bugdigger.bytesight.debugger.DebuggerState
 import com.bugdigger.bytesight.debugger.ExecutionCursor
+import com.bugdigger.bytesight.debugger.HitDirection
+import com.bugdigger.bytesight.debugger.LiveCursor
+import com.bugdigger.bytesight.debugger.RecordingFile
+import com.bugdigger.bytesight.debugger.RecordingLog
+import com.bugdigger.bytesight.debugger.RecordingState
+import com.bugdigger.bytesight.debugger.ReplayCursor
 import com.bugdigger.bytesight.service.AgentClient
 import com.bugdigger.protocol.Breakpoint
+import com.bugdigger.protocol.DebuggerEvent
+import com.bugdigger.protocol.FrameSnapshot
+import com.bugdigger.protocol.BreakpointHit
 import com.bugdigger.protocol.MethodBreakpointMode
 import com.bugdigger.protocol.StepKind
 import com.bugdigger.protocol.breakpoint
 import com.bugdigger.protocol.lineLocation
 import com.bugdigger.protocol.methodLocation
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.nio.file.Path
 import java.util.UUID
 
 /**
@@ -29,16 +46,57 @@ import java.util.UUID
  */
 class DebuggerViewModel(
     private val agentClient: AgentClient,
-    val cursor: ExecutionCursor,
+    private val liveCursor: LiveCursor,
+    private val replayCursor: ReplayCursor,
+    private val recordingLog: RecordingLog,
     private val debuggerState: DebuggerState,
 ) : ViewModel() {
 
     val breakpoints: StateFlow<List<DebuggerState.UiBreakpoint>> = debuggerState.breakpoints
-    val threads = cursor.threads
-    val currentThreadId = cursor.currentThreadId
-    val currentFrame = cursor.currentFrame
-    val callStack = cursor.callStack
-    val lastHit = cursor.lastHit
+
+    private val _cursorMode = MutableStateFlow<CursorMode>(CursorMode.Live)
+    val cursorMode: StateFlow<CursorMode> = _cursorMode.asStateFlow()
+
+    /** Replay log for the timeline scrubber and recording-state badge. */
+    val recordingState: StateFlow<RecordingState> = recordingLog.state
+    val recordedEvents: StateFlow<List<DebuggerEvent>> = recordingLog.events
+
+    /** Active cursor (Live or Replay) according to [cursorMode]. */
+    private val activeCursor: ExecutionCursor get() = when (_cursorMode.value) {
+        is CursorMode.Live -> liveCursor
+        is CursorMode.Replay -> replayCursor
+    }
+
+    // Each public StateFlow combines mode + both cursors so the UI re-renders
+    // automatically when either the mode flips or the underlying cursor updates.
+    // Unconfined dispatcher keeps the routing synchronous for tests and avoids
+    // any thread hop on user interactions.
+    private val routingScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+
+    val threads: StateFlow<List<com.bugdigger.bytesight.debugger.ThreadView>> =
+        combine(_cursorMode, liveCursor.threads, replayCursor.threads) { m, l, r ->
+            if (m is CursorMode.Live) l else r
+        }.stateIn(routingScope, SharingStarted.Eagerly, emptyList())
+
+    val currentThreadId: StateFlow<Long?> =
+        combine(_cursorMode, liveCursor.currentThreadId, replayCursor.currentThreadId) { m, l, r ->
+            if (m is CursorMode.Live) l else r
+        }.stateIn(routingScope, SharingStarted.Eagerly, null)
+
+    val currentFrame: StateFlow<FrameSnapshot?> =
+        combine(_cursorMode, liveCursor.currentFrame, replayCursor.currentFrame) { m, l, r ->
+            if (m is CursorMode.Live) l else r
+        }.stateIn(routingScope, SharingStarted.Eagerly, null)
+
+    val callStack: StateFlow<List<FrameSnapshot>> =
+        combine(_cursorMode, liveCursor.callStack, replayCursor.callStack) { m, l, r ->
+            if (m is CursorMode.Live) l else r
+        }.stateIn(routingScope, SharingStarted.Eagerly, emptyList())
+
+    val lastHit: StateFlow<BreakpointHit?> =
+        combine(_cursorMode, liveCursor.lastHit, replayCursor.lastHit) { m, l, r ->
+            if (m is CursorMode.Live) l else r
+        }.stateIn(routingScope, SharingStarted.Eagerly, null)
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
@@ -293,9 +351,88 @@ class DebuggerViewModel(
         }
     }
 
-    fun selectThread(id: Long) = cursor.selectThread(id)
+    fun selectThread(id: Long) = activeCursor.selectThread(id)
 
-    fun selectFrame(depth: Int) = cursor.selectFrame(depth)
+    fun selectFrame(depth: Int) = activeCursor.selectFrame(depth)
+
+    // ---------------- Time-Travel Debugging (Phase 4) ----------------
+
+    /** Start capturing live events into [recordingLog]. UI badge: REC ●. */
+    fun startRecording() = recordingLog.startRecording()
+
+    /** Stop appending new events. Existing events stay scrubbable. */
+    fun stopRecording() = recordingLog.stopRecording()
+
+    /** Drop all captured events and return to IDLE. */
+    fun clearRecording() = recordingLog.clear()
+
+    /**
+     * Move the playhead to [sequenceId] and switch the UI into Replay mode.
+     * The Call Stack / Variables / Source panels re-render against the
+     * snapshot at that point in time.
+     */
+    fun seekTo(sequenceId: Long) {
+        replayCursor.seekTo(sequenceId)
+        _cursorMode.value = CursorMode.Replay(sequenceId)
+    }
+
+    /** Snap the UI back to the live JVM state. Recording is unaffected. */
+    fun resumeLive() {
+        _cursorMode.value = CursorMode.Live
+    }
+
+    /**
+     * Move the playhead to the previous [BreakpointHit] on the currently
+     * focused thread (or any thread if [acrossAllThreads] is set, e.g. via
+     * Shift-click on the Prev button).
+     */
+    fun prevHit(acrossAllThreads: Boolean = false) {
+        val from = currentScrubSequenceId() ?: return
+        val tid = if (acrossAllThreads) null else currentThreadId.value
+        val target = recordingLog.findHit(from, tid, HitDirection.BACKWARD)
+        if (target != null) {
+            seekTo(target.sequenceId)
+        } else if (_cursorMode.value !is CursorMode.Replay) {
+            // From Live, with no prior hit — nothing to do; stay live.
+        }
+    }
+
+    fun nextHit(acrossAllThreads: Boolean = false) {
+        val from = currentScrubSequenceId() ?: Long.MIN_VALUE
+        val tid = if (acrossAllThreads) null else currentThreadId.value
+        val target = recordingLog.findHit(from, tid, HitDirection.FORWARD)
+        if (target != null) {
+            seekTo(target.sequenceId)
+        }
+    }
+
+    private fun currentScrubSequenceId(): Long? = when (val m = _cursorMode.value) {
+        is CursorMode.Replay -> m.sequenceId
+        is CursorMode.Live -> null
+    }
+
+    /** Persist the current recorded log to [path] (.btsrec). */
+    fun saveRecording(path: Path) {
+        try {
+            RecordingFile.saveTo(path, recordingLog.events.value)
+        } catch (e: Exception) {
+            _error.value = "Failed to save recording: ${e.message}"
+        }
+    }
+
+    /** Load a previously saved recording from [path]; enters REPLAY state. */
+    fun loadRecording(path: Path) {
+        try {
+            val events = RecordingFile.loadFrom(path)
+            recordingLog.replaceEvents(events)
+            // Snap the playhead to the first hit if any, otherwise the first event.
+            val firstHit = events.firstOrNull { it.kindCase == DebuggerEvent.KindCase.HIT }
+            val anchor = firstHit?.sequenceId ?: events.firstOrNull()?.sequenceId
+            if (anchor != null) seekTo(anchor) else _cursorMode.value = CursorMode.Live
+        } catch (e: Exception) {
+            _error.value = "Failed to load recording: ${e.message}"
+        }
+    }
 
     fun clearError() {
         _error.value = null

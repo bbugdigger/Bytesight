@@ -29,9 +29,15 @@ import androidx.compose.ui.unit.dp
 import com.bugdigger.bytesight.ui.debugger.components.BreakpointsPanel
 import com.bugdigger.bytesight.ui.debugger.components.CallStackPanel
 import com.bugdigger.bytesight.ui.debugger.components.ControlBar
+import com.bugdigger.bytesight.ui.debugger.components.RecordingBar
 import com.bugdigger.bytesight.ui.debugger.components.ThreadsPanel
+import com.bugdigger.bytesight.ui.debugger.components.Timeline
 import com.bugdigger.bytesight.ui.debugger.components.VariablesPanel
 import com.bugdigger.protocol.ThreadState
+import java.awt.FileDialog
+import java.awt.Frame
+import java.nio.file.Path
+import java.nio.file.Paths
 
 @Composable
 fun DebuggerScreen(
@@ -53,6 +59,9 @@ fun DebuggerScreen(
     val lastHit by viewModel.lastHit.collectAsState()
     val error by viewModel.error.collectAsState()
     val busy by viewModel.busy.collectAsState()
+    val recordingState by viewModel.recordingState.collectAsState()
+    val recordedEvents by viewModel.recordedEvents.collectAsState()
+    val cursorMode by viewModel.cursorMode.collectAsState()
 
     val suspendedCount = threads.count { it.state == ThreadState.THREAD_STATE_SUSPENDED }
     val currentIsSuspended = threads.firstOrNull { it.id == currentThreadId }?.state ==
@@ -72,6 +81,24 @@ fun DebuggerScreen(
             onStepOver = viewModel::stepOver,
             onStepInto = viewModel::stepInto,
             onStepOut = viewModel::stepOut,
+        )
+
+        RecordingBar(
+            recordingState = recordingState,
+            cursorMode = cursorMode,
+            eventCount = recordedEvents.size,
+            onStartRecording = viewModel::startRecording,
+            onStopRecording = viewModel::stopRecording,
+            onClearRecording = viewModel::clearRecording,
+            onPrevHit = { viewModel.prevHit() },
+            onNextHit = { viewModel.nextHit() },
+            onResumeLive = viewModel::resumeLive,
+            onSave = {
+                pickSaveFile()?.let(viewModel::saveRecording)
+            },
+            onLoad = {
+                pickLoadFile()?.let(viewModel::loadRecording)
+            },
         )
 
         if (busy) {
@@ -148,8 +175,35 @@ fun DebuggerScreen(
                 )
             }
         }
+
+        Timeline(
+            events = recordedEvents,
+            cursorMode = cursorMode,
+            onSeek = viewModel::seekTo,
+        )
     }
     }
+}
+
+private fun pickSaveFile(): Path? {
+    val dlg = FileDialog(null as Frame?, "Save recording", FileDialog.SAVE).apply {
+        file = "session.btsrec"
+        isVisible = true
+    }
+    val dir = dlg.directory ?: return null
+    val name = dlg.file ?: return null
+    val withExt = if (name.endsWith(".btsrec", ignoreCase = true)) name else "$name.btsrec"
+    return Paths.get(dir, withExt)
+}
+
+private fun pickLoadFile(): Path? {
+    val dlg = FileDialog(null as Frame?, "Load recording", FileDialog.LOAD).apply {
+        setFilenameFilter { _, n -> n.endsWith(".btsrec", ignoreCase = true) }
+        isVisible = true
+    }
+    val dir = dlg.directory ?: return null
+    val name = dlg.file ?: return null
+    return Paths.get(dir, name)
 }
 
 @Composable

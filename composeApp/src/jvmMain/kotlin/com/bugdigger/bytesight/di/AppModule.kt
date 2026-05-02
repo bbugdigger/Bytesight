@@ -4,6 +4,8 @@ import com.bugdigger.ai.BytesightAgentServices
 import com.bugdigger.bytesight.debugger.DebuggerState
 import com.bugdigger.bytesight.debugger.ExecutionCursor
 import com.bugdigger.bytesight.debugger.LiveCursor
+import com.bugdigger.bytesight.debugger.RecordingLog
+import com.bugdigger.bytesight.debugger.ReplayCursor
 import com.bugdigger.bytesight.service.AgentClient
 import com.bugdigger.bytesight.service.AgentConfigStore
 import com.bugdigger.bytesight.service.AttachService
@@ -42,7 +44,13 @@ val appModule = module {
 
     // Debugger
     singleOf(::DebuggerState)
-    single<ExecutionCursor> { LiveCursor(get(), get()) }
+    single { RecordingLog() }
+    single { LiveCursor(get(), get(), get()) }
+    single { ReplayCursor(get(), initialSequenceId = 0L) }
+    // ExecutionCursor binding kept for any consumers that still inject it directly;
+    // the Debugger UI itself reads from DebuggerViewModel which routes between
+    // live + replay cursors based on CursorMode.
+    single<ExecutionCursor> { get<LiveCursor>() }
 
     // Decompiler configuration
     single { DecompilerOptions() }

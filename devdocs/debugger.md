@@ -348,3 +348,62 @@ Still on the roadmap, mostly because they're either OnLoad-only-cap dependent or
 - Time-Travel Debugging.
 
 The `ExecutionCursor` abstraction is honored end-to-end (the UI never bypasses it), so a future `ReplayCursor` for TTD remains a drop-in.
+
+---
+
+## Phase 4 — Time-Travel Debugging (v1) — implemented
+
+Phase 4 ships **observation-scrubbing TTD**: a toggleable in-memory ring buffer of the existing `DebuggerEvent` stream, plus a `ReplayCursor` that re-renders the same Call Stack / Variables / Source panels against any historical sequence id. Implementation plan: see `~/.claude/plans/so-i-heard-about-ticklish-mist.md`. **No agent-side changes** — Phase 4 is purely composeApp.
+
+### What "TTD" means here (vs rr / Microsoft TTD)
+
+We do **not** re-execute the JVM. We persist what the agent already emits (bp hits, step events, thread state changes) into a `RecordingLog` indexed by the existing monotonic `sequence_id`, then let the user scrub. Bit-exact deterministic replay would need syscall-level interception we cannot do from a Java agent on HotSpot 21 (Phase 2 already documented that 6 of 10 needed JVMTI caps are refused on live attach). Observation scrubbing is what's possible — and for RE workflows (one-shot triggers, anti-debug evasion via post-hoc analysis, sequence comprehension on obfuscated code) it's exactly the right shape.
+
+### Architecture — `ReplayCursor` slots into the existing abstraction
+
+The Phase 1 design doc specifically called this out (line 99): *"swapping to ReplayCursor for TTD later is invisible to the UI."* Phase 4 confirms it — the swap lives entirely in `DebuggerViewModel` via `combine(_cursorMode, liveCursor.X, replayCursor.X)`. Every existing panel (BreakpointsPanel, CallStackPanel, VariablesPanel, ThreadsPanel) reads from the same view-model StateFlows it always did; routing happens upstream.
+
+```
+LiveCursor (existing)  ──tee──►  RecordingLog (NEW, ring buffer, 10k events)
+       │                              ▲
+       │                              │ random-access by sequenceId
+       │                              ▼
+       │                        ReplayCursor (NEW, walks events ≤ playhead)
+       │                              ▲
+       ▼                              │
+       └──────►  DebuggerViewModel ───┘   (combine + flatMapLatest by CursorMode)
+                       │
+                       ▼  unchanged StateFlows: threads, currentFrame, callStack, lastHit
+                  Existing UI panels
+```
+
+### Recording control (`composeApp/.../debugger/RecordingLog.kt`)
+
+Three states: `IDLE` (empty), `RECORDING` (actively appending the live stream), `REPLAY` (events present, capture stopped). `record()` is a no-op outside `RECORDING` so the tee in `LiveCursor.handleEvent` costs nothing when the user hasn't clicked Rec.
+
+Ring-buffer eviction at 10k events by default. Eviction drops the oldest entries; the remaining log stays sorted by `sequence_id` (the agent assigns them monotonically), so binary search is O(log n).
+
+### Storage format (`composeApp/.../debugger/RecordingFile.kt`)
+
+`.btsrec` = length-prefixed stream of `DebuggerEvent` proto messages via `writeDelimitedTo` / `parseDelimitedFrom`. No header, no version, no magic. The proto's `oneof kind` and reserved field numbers (lines 151, 160, 170 of this doc) provide forward compatibility — additional event types loaded by an older client surface as `KindCase.KIND_NOT_SET`, which the UI tolerates.
+
+### UI additions
+
+- `RecordingBar.kt` — sits below `ControlBar`. Buttons: `[⏺ Rec]` / `[■ Stop Rec]`, `[⏮ Prev hit]`, `[⏭ Next hit]`, `[💾 Save]`, `[📂 Load]`, `[Clear]`, and (in replay) `[↩ Resume Live]`. Status badge shows `LIVE` / `REC ●` / `STOPPED` / `REPLAY @ seq=N`.
+- `Timeline.kt` — bottom scrubber. Tick per event, color-coded by `kindCase` (red = hit, blue = step, secondary = thread state). Drag the playhead or click anywhere on the track to seek. Subsamples to ~500 visible ticks at high event counts to avoid Compose Canvas overdraw.
+- File picker uses AWT `FileDialog` (JVM Compose Desktop has no native chooser).
+
+### Reverse-step semantics
+
+`prevHit` / `nextHit` walk to the previous/next `BreakpointHit` **on the currently focused thread** (cross-thread jumping is confusing in RE workflows). Both are no-ops when no hits exist; `nextHit` from Live mode jumps to the first recorded hit (intuitive "rewind to start"). `Step` events appear on the timeline scrubber but are skipped by `Prev/Next hit` — those buttons mean "interesting suspend point" = bp hits.
+
+### What this Phase 4 PR does NOT do
+
+Still on the roadmap (Phase 4 v2):
+
+- Field-write probes (so "show me every write to field X" becomes a query).
+- Heap snapshots at bp hit time (so `Inspect in Heap` works against historical state).
+- True reverse stepping across decompiled lines (today: only across captured suspend points).
+- Cross-session merge of recordings.
+
+The TTD recording schema is forward-compatible with all of the above (proto reserved field numbers + `oneof kind`), so each is additive, not a rewrite.

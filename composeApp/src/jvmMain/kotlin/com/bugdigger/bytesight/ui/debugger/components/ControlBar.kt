@@ -102,18 +102,7 @@ fun ControlBar(
         ) {
             Text("■ Stop")
         }
-        Spacer(Modifier.width(24.dp))
-        TooltipBox(
-            positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
-            tooltip = { PlainTooltip { Text("Time-travel recording — Phase 4") } },
-            state = rememberTooltipState(),
-        ) {
-            OutlinedButton(
-                onClick = {},
-                enabled = false,
-            ) {
-                Text("⏺ Rec")
-            }
-        }
+        // Time-travel controls live in their own RecordingBar below; the stub
+        // [⏺ Rec] button that used to live here has been replaced by it.
     }
 }

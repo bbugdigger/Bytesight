@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory
 class LiveCursor(
     private val agentClient: AgentClient,
     connectionRegistry: ConnectionRegistry,
+    private val recordingLog: RecordingLog,
 ) : ExecutionCursor {
 
     private val logger = LoggerFactory.getLogger(LiveCursor::class.java)
@@ -82,6 +83,9 @@ class LiveCursor(
     }
 
     private fun handleEvent(event: DebuggerEvent) {
+        // Tee into the time-travel log first; record() is a no-op unless the
+        // log is in RECORDING state, so this costs ~nothing when recording is off.
+        recordingLog.record(event)
         when (event.kindCase) {
             DebuggerEvent.KindCase.HIT -> handleHit(event.hit)
             DebuggerEvent.KindCase.STEP -> handleStep(event.step)
