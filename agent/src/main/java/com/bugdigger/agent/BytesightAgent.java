@@ -1,6 +1,7 @@
 package com.bugdigger.agent;
 
 import com.bugdigger.agent.collector.ClassCollector;
+import com.bugdigger.agent.debugger.NativeDebuggerLoader;
 import com.bugdigger.agent.heap.HeapNativeLoader;
 import com.bugdigger.agent.heap.HeapSnapshotManager;
 import com.bugdigger.agent.server.AgentGrpcServer;
@@ -68,6 +69,16 @@ public class BytesightAgent {
                 logger.warn("[Bytesight] Heap native loader threw: {}", t.getMessage());
             }
             heapSnapshotManager = new HeapSnapshotManager();
+
+            // System.load the same debugger DLL that composeApp will (or just
+            // did) load via vm.loadAgentPath. Two registrations against one OS
+            // mapping: this one binds JNI symbols; the other acquires JVMTI
+            // capabilities. Path is supplied by the attaching process.
+            try {
+                NativeDebuggerLoader.load(config.getDebuggerDllPath());
+            } catch (Throwable t) {
+                logger.warn("[Bytesight] Debugger native loader threw: {}", t.getMessage());
+            }
 
             // Start gRPC server
             grpcServer = new AgentGrpcServer(config.getPort(), instrumentation, classCollector, heapSnapshotManager);

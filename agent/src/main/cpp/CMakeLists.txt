@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(bytesight_heap LANGUAGES CXX)
+project(bytesight_native LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -12,6 +12,7 @@ endif()
 set(JDK_HOME $ENV{JAVA_HOME})
 message(STATUS "Using JDK at: ${JDK_HOME}")
 
+# ===== bytesight_heap =====================================================
 add_library(bytesight_heap SHARED
     src/agent_entry.cpp
     src/capabilities.cpp
@@ -27,7 +28,6 @@ target_include_directories(bytesight_heap PRIVATE
     include
 )
 
-# Hide internal symbols, export only JNI entry points
 if(MSVC)
     target_compile_options(bytesight_heap PRIVATE /W3 /EHsc)
     target_compile_definitions(bytesight_heap PRIVATE _CRT_SECURE_NO_WARNINGS)
@@ -35,5 +35,29 @@ endif()
 
 set_target_properties(bytesight_heap PROPERTIES
     OUTPUT_NAME "bytesight_heap"
+    PREFIX ""
+)
+
+# ===== bytesight_debugger =================================================
+# Separate shared library so the heap and debugger modules can fail
+# independently. Each DLL has its own JNI_OnLoad and its own jvmtiEnv*.
+add_library(bytesight_debugger SHARED
+    src/debugger/agent_init.cpp
+    src/debugger/jni_bridge.cpp
+)
+
+target_include_directories(bytesight_debugger PRIVATE
+    ${JDK_HOME}/include
+    ${JDK_HOME}/include/win32
+    include
+)
+
+if(MSVC)
+    target_compile_options(bytesight_debugger PRIVATE /W3 /EHsc)
+    target_compile_definitions(bytesight_debugger PRIVATE _CRT_SECURE_NO_WARNINGS)
+endif()
+
+set_target_properties(bytesight_debugger PROPERTIES
+    OUTPUT_NAME "bytesight_debugger"
     PREFIX ""
 )

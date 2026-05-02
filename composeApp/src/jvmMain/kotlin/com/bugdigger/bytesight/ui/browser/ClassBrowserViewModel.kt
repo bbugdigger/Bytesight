@@ -66,6 +66,15 @@ class ClassBrowserViewModel(
     fun setConnectionKey(key: String) {
         if (connectionKey != key) {
             connectionKey = key
+            // Drop the previous attach's class list and any drilled-into class.
+            // Keep user preferences (searchQuery, includeSystemClasses) so the
+            // browser opens with the user's last-used filter against the new
+            // process — usually what they want when they reattach to retry.
+            val prev = _uiState.value
+            _uiState.value = ClassBrowserUiState(
+                searchQuery = prev.searchQuery,
+                includeSystemClasses = prev.includeSystemClasses,
+            )
             refreshClasses()
         }
     }

@@ -56,6 +56,8 @@ fun CodeViewer(
     @Suppress("UNUSED_PARAMETER") language: String = "java",
     renamedSymbols: Map<String, String> = emptyMap(),
     onRenameRequest: ((String) -> Unit)? = null,
+    bpLines: Set<Int> = emptySet(),
+    onLineClick: ((Int) -> Unit)? = null,
 ) {
     val isInteractive = onRenameRequest != null
     val highlighter = remember { JavaSyntaxHighlighter() }
@@ -117,11 +119,28 @@ fun CodeViewer(
                 horizontalAlignment = Alignment.End,
             ) {
                 for (i in 1..lineCount) {
-                    Text(
-                        text = "$i",
-                        style = codeStyle,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    )
+                    val lineModifier = if (onLineClick != null) {
+                        Modifier.fillMaxWidth().clickable { onLineClick(i) }
+                    } else Modifier.fillMaxWidth()
+                    Row(
+                        modifier = lineModifier,
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        if (i in bpLines) {
+                            Text(
+                                text = "●",
+                                style = codeStyle.copy(fontSize = 11.sp),
+                                color = Color(0xFFE53935),
+                            )
+                            Spacer(Modifier.width(2.dp))
+                        }
+                        Text(
+                            text = "$i",
+                            style = codeStyle,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        )
+                    }
                 }
             }
 

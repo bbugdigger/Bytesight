@@ -6,6 +6,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.util.jar.JarFile
 
 /**
  * Service for discovering and attaching to running JVM processes.
@@ -56,11 +59,33 @@ class AttachService {
             val agentJarPath = resolveAgentJarPath()
             require(File(agentJarPath).exists()) { "Agent JAR not found at: $agentJarPath" }
 
+            // Extract the debugger DLL once. The path goes to BOTH:
+            //   (1) the Java agent as a `debuggerDllPath` arg, so it can
+            //       System.load the file (binds JNI symbols), and
+            //   (2) vm.loadAgentPath, which triggers Agent_OnAttach (where the
+            //       Phase: onload-only JVMTI capabilities are acquired).
+            // Same file path => one OS mapping; the JVM tracks two registrations.
+            val dllPath: String? = runCatching { extractNativeDebuggerDll(agentJarPath) }
+                .onFailure { logger.warn("Native debugger DLL not extracted: ${it.message}") }
+                .getOrNull()
+
             val vm = VirtualMachine.attach(pid)
             try {
-                val agentArgs = "port=$agentPort"
+                val agentArgs = buildString {
+                    append("port=").append(agentPort)
+                    if (dllPath != null) append(",debuggerDllPath=").append(dllPath)
+                }
                 vm.loadAgent(agentJarPath, agentArgs)
                 logger.info("Agent successfully attached to $pid")
+
+                if (dllPath != null) {
+                    runCatching {
+                        logger.info("Loading native debugger helper into target: $dllPath")
+                        vm.loadAgentPath(dllPath)
+                        logger.info("Native debugger helper loaded (Agent_OnAttach succeeded)")
+                    }.onFailure { logger.warn("loadAgentPath failed: ${it.message}") }
+                }
+
                 agentPort
             } finally {
                 vm.detach()
@@ -126,5 +151,43 @@ class AttachService {
         } catch (e: Exception) {
             true
         }
+    }
+
+    /**
+     * Extracts the platform-specific debugger DLL from the agent JAR to a temp
+     * file and returns its absolute path with forward-slash separators.
+     */
+    private fun extractNativeDebuggerDll(agentJarPath: String): String {
+        val resourcePath = nativeDebuggerResourcePath()
+            ?: error("Unsupported platform for native debugger helper")
+
+        val jarFile = File(agentJarPath.replace('/', File.separatorChar))
+        require(jarFile.exists()) { "Agent JAR missing: $jarFile" }
+
+        val tempDll = JarFile(jarFile).use { jar ->
+            val entry = jar.getJarEntry(resourcePath)
+                ?: error("Agent JAR missing native helper: $resourcePath")
+            val out = Files.createTempFile("bytesight_debugger_", suffixOf(resourcePath))
+            out.toFile().deleteOnExit()
+            jar.getInputStream(entry).use { Files.copy(it, out, StandardCopyOption.REPLACE_EXISTING) }
+            out
+        }
+
+        return tempDll.toAbsolutePath().toString().replace('\\', '/')
+    }
+
+    private fun nativeDebuggerResourcePath(): String? {
+        val os = System.getProperty("os.name", "").lowercase()
+        val arch = System.getProperty("os.arch", "").lowercase()
+        return when {
+            os.contains("win") && (arch.contains("amd64") || arch.contains("x86_64") || arch.contains("x64")) ->
+                "native/win-x64/bytesight_debugger.dll"
+            else -> null
+        }
+    }
+
+    private fun suffixOf(path: String): String {
+        val dot = path.lastIndexOf('.')
+        return if (dot < 0) ".lib" else path.substring(dot)
     }
 }

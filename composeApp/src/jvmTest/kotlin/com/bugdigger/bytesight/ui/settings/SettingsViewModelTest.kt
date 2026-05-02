@@ -17,7 +17,7 @@ class SettingsViewModelTest {
 
     @BeforeEach
     fun setup() {
-        viewModel = SettingsViewModel()
+        viewModel = SettingsViewModel(com.bugdigger.bytesight.service.AgentConfigStore())
     }
 
     @Nested

@@ -59,6 +59,17 @@ class HierarchyViewModel(
     fun setConnectionKey(key: String) {
         if (connectionKey != key) {
             connectionKey = key
+            // Drop the previous attach's hierarchy + selection. Keep filter
+            // preferences (showInterfaces, showClasses, searchQuery) since
+            // those are user-set, not data-derived.
+            allClasses = emptyList()
+            val prev = _uiState.value
+            _uiState.value = HierarchyUiState(
+                showInterfaces = prev.showInterfaces,
+                showClasses = prev.showClasses,
+                searchQuery = prev.searchQuery,
+                renames = prev.renames,
+            )
             loadHierarchy()
         }
     }

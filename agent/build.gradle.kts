@@ -45,7 +45,7 @@ tasks.test {
 val cppSrcDir = layout.projectDirectory.dir("src/main/cpp")
 val nativeBuildDir = layout.buildDirectory.dir("native")
 val nativeResDir = layout.projectDirectory.dir("src/main/resources/native/win-x64")
-val nativeDllName = "bytesight_heap.dll"
+val nativeDllNames = listOf("bytesight_heap.dll", "bytesight_debugger.dll")
 
 val jdkHomeForNative: String = System.getenv("JAVA_HOME")
     ?: javaToolchains.launcherFor(java.toolchain).get().metadata.installationPath.asFile.absolutePath
@@ -77,7 +77,7 @@ val compileNative by tasks.registering(Exec::class) {
     val buildOut = nativeBuildDir.get().asFile
 
     inputs.dir(src)
-    outputs.file(File(buildOut, "Release/$nativeDllName"))
+    outputs.files(nativeDllNames.map { File(buildOut, "Release/$it") })
 
     environment("JAVA_HOME", jdkHomeForNative)
     commandLine("cmake", "--build", buildOut.absolutePath, "--config", "Release")
@@ -87,7 +87,9 @@ val buildNative by tasks.registering(Copy::class) {
     dependsOn(compileNative)
     val buildOut = nativeBuildDir.get().asFile
 
-    from(File(buildOut, "Release/$nativeDllName"))
+    nativeDllNames.forEach { dll ->
+        from(File(buildOut, "Release/$dll"))
+    }
     into(nativeResDir.asFile)
 }
 

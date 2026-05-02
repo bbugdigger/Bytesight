@@ -13,6 +13,8 @@ import com.bugdigger.bytesight.ui.attach.AttachScreen
 import com.bugdigger.bytesight.ui.attach.AttachViewModel
 import com.bugdigger.bytesight.ui.browser.ClassBrowserScreen
 import com.bugdigger.bytesight.ui.browser.ClassBrowserViewModel
+import com.bugdigger.bytesight.ui.debugger.DebuggerScreen
+import com.bugdigger.bytesight.ui.debugger.DebuggerViewModel
 import com.bugdigger.bytesight.ui.heap.HeapScreen
 import com.bugdigger.bytesight.ui.heap.HeapViewModel
 import com.bugdigger.bytesight.ui.hierarchy.HierarchyScreen
@@ -74,14 +76,20 @@ fun App() {
                         currentScreen = Screen.ATTACH,
                     )
                 },
-                onNavigateToInspector = { className ->
+                onNavigateToInspector = { className, methodName, methodSignature ->
                     navState = navState.copy(
                         currentScreen = Screen.INSPECTOR,
                         pendingInspectorClass = className,
+                        pendingInspectorMethod = methodName,
+                        pendingInspectorMethodSignature = methodSignature,
                     )
                 },
                 onClearPendingInspectorClass = {
-                    navState = navState.copy(pendingInspectorClass = null)
+                    navState = navState.copy(
+                        pendingInspectorClass = null,
+                        pendingInspectorMethod = null,
+                        pendingInspectorMethodSignature = null,
+                    )
                 },
                 onAskAI = { prompt ->
                     navState = navState.copy(
@@ -105,7 +113,7 @@ private fun MainContent(
     navState: NavigationState,
     onConnected: (String) -> Unit,
     onDisconnected: () -> Unit,
-    onNavigateToInspector: (className: String) -> Unit,
+    onNavigateToInspector: (className: String, methodName: String?, methodSignature: String?) -> Unit,
     onClearPendingInspectorClass: () -> Unit,
     onAskAI: (prompt: String) -> Unit,
     onClearPendingAIPrompt: () -> Unit,
@@ -154,6 +162,8 @@ private fun MainContent(
                     viewModel = viewModel,
                     connectionKey = connectionKey,
                     pendingClassName = navState.pendingInspectorClass,
+                    pendingMethodName = navState.pendingInspectorMethod,
+                    pendingMethodSignature = navState.pendingInspectorMethodSignature,
                     onPendingClassConsumed = onClearPendingInspectorClass,
                     onAskAI = onAskAI,
                     modifier = modifier,
@@ -193,7 +203,23 @@ private fun MainContent(
                 HeapScreen(
                     viewModel = viewModel,
                     connectionKey = connectionKey,
+                    // Heap has no method-level context for "Inspect" — open
+                    // the class with no preselected method.
+                    onNavigateToInspector = { name -> onNavigateToInspector(name, null, null) },
+                    modifier = modifier,
+                )
+            }
+        }
+
+        Screen.DEBUGGER -> {
+            val connectionKey = navState.connectionKey
+            if (connectionKey != null) {
+                val viewModel: DebuggerViewModel = koinInject()
+                DebuggerScreen(
+                    viewModel = viewModel,
+                    connectionKey = connectionKey,
                     onNavigateToInspector = onNavigateToInspector,
+                    onAskAI = onAskAI,
                     modifier = modifier,
                 )
             }

@@ -23,11 +23,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.bugdigger.bytesight.debugger.DebuggerState
 import com.bugdigger.bytesight.ui.components.CodeViewer
 import com.bugdigger.bytesight.ui.components.CommentDialog
 import com.bugdigger.bytesight.ui.components.GraphView
 import com.bugdigger.bytesight.ui.components.RenameDialog
 import com.bugdigger.bytesight.ui.components.SelectorRow
+import org.koin.compose.koinInject
 import com.bugdigger.core.analysis.BasicBlock
 import com.bugdigger.core.analysis.BlockType
 import com.bugdigger.core.analysis.CfgEdge
@@ -46,11 +48,14 @@ fun InspectorScreen(
     viewModel: InspectorViewModel,
     connectionKey: String,
     pendingClassName: String? = null,
+    pendingMethodName: String? = null,
+    pendingMethodSignature: String? = null,
     onPendingClassConsumed: () -> Unit = {},
     onAskAI: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val debuggerState: DebuggerState = koinInject()
 
     val density = LocalDensity.current.density
     LaunchedEffect(density) {
@@ -61,13 +66,27 @@ fun InspectorScreen(
         viewModel.setConnectionKey(connectionKey)
     }
 
-    // When navigating from Heap with a pending class, auto-select it once classes are loaded.
-    LaunchedEffect(pendingClassName) {
+    // When navigating from another tab with a pending class (and optionally
+    // method), auto-select once classes are loaded. Used by both Heap "Inspect"
+    // (class only) and Debugger Call Stack "Inspect" (class + method + sig).
+    LaunchedEffect(pendingClassName, pendingMethodName, pendingMethodSignature) {
         if (pendingClassName != null) {
             // Wait for classes to be loaded (setConnectionKey triggers loadClasses)
             snapshotFlow { viewModel.uiState.value.classes }
                 .first { it.isNotEmpty() }
             viewModel.selectClass(pendingClassName)
+            if (pendingMethodName != null) {
+                // selectClass disassembles the class and populates `methods`
+                // asynchronously — wait for that, then pick the right method.
+                val method = snapshotFlow { viewModel.uiState.value.disassembledClass?.methods }
+                    .first { !it.isNullOrEmpty() }
+                    .orEmpty()
+                    .firstOrNull { m ->
+                        m.name == pendingMethodName &&
+                            (pendingMethodSignature.isNullOrEmpty() || m.descriptor == pendingMethodSignature)
+                    }
+                if (method != null) viewModel.selectMethod(method.name, method.descriptor)
+            }
             onPendingClassConsumed()
         }
     }
@@ -174,29 +193,106 @@ fun InspectorScreen(
                 )
             }
 
+            val selectedClassName = uiState.selectedClassName
+            val selectedMethod = uiState.selectedMethod
+            if (selectedClassName != null && selectedMethod != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = {
+                        debuggerState.requestToggleFromInspector(
+                            className = selectedClassName,
+                            methodName = selectedMethod.name,
+                            methodSignature = selectedMethod.descriptor,
+                            line = 0,
+                        )
+                    }) {
+                        Text("🐞 Toggle method breakpoint")
+                    }
+                    Text(
+                        text = "— opens in Debugger tab",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
 
             Row(
                 modifier = Modifier.weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                // Compute decompiled-line bp dots by reverse-mapping the
+                // currently-active line bps on this class through the
+                // decompiled line map (bytecode line → decompiled line).
+                val bpListForDecomp by debuggerState.breakpoints.collectAsState()
+                val decompBpLines = remember(bpListForDecomp, uiState.selectedClassName, uiState.decompiledLineMap) {
+                    val cls = uiState.selectedClassName
+                    val map = uiState.decompiledLineMap
+                    if (cls == null || map == null) emptySet()
+                    else bpListForDecomp
+                        .filter { it.className == cls && it.displayLine > 0 && it.enabled }
+                        .flatMap { map.decompiledLinesFor(it.displayLine) }
+                        .toSet()
+                }
+
                 DecompiledPanel(
                     source = uiState.displaySource ?: uiState.decompiledSource,
                     isLoading = uiState.isLoading,
                     renamedSymbols = uiState.renamedSymbols,
                     onRenameConfirm = { shortName, newName -> viewModel.renameSymbol(shortName, newName) },
+                    bpLines = decompBpLines,
+                    onLineClick = { decompiledLine ->
+                        val cls = uiState.selectedClassName ?: return@DecompiledPanel
+                        val map = uiState.decompiledLineMap ?: return@DecompiledPanel
+                        val original = map.originalLineFor(decompiledLine)
+                            ?: map.findNearbyOriginalLine(decompiledLine)
+                            ?: return@DecompiledPanel
+                        val m = uiState.selectedMethod
+                        debuggerState.requestToggleFromInspector(
+                            className = cls,
+                            methodName = m?.name ?: "",
+                            methodSignature = m?.descriptor ?: "",
+                            line = original,
+                        )
+                    },
                     modifier = Modifier.weight(1f),
                 )
 
                 when (uiState.viewMode) {
-                    ViewMode.LINEAR -> BytecodePanel(
-                        method = uiState.selectedMethod,
-                        selectedInstruction = uiState.selectedInstruction,
-                        instructionComments = uiState.methodComments.instructionLevel,
-                        isLoading = uiState.isLoading,
-                        onSelectInstruction = viewModel::selectInstruction,
-                        modifier = Modifier.weight(1f),
-                    )
+                    ViewMode.LINEAR -> {
+                        val activeBpLines = remember(uiState.selectedClassName) {
+                            mutableStateOf<Set<Int>>(emptySet())
+                        }
+                        // Recompute the active line-bp set whenever breakpoints change.
+                        val bpList by debuggerState.breakpoints.collectAsState()
+                        LaunchedEffect(bpList, uiState.selectedClassName) {
+                            val cls = uiState.selectedClassName
+                            activeBpLines.value = if (cls == null) emptySet()
+                            else bpList.filter { it.className == cls && it.displayLine > 0 && it.enabled }
+                                       .map { it.displayLine }.toSet()
+                        }
+                        BytecodePanel(
+                            method = uiState.selectedMethod,
+                            selectedInstruction = uiState.selectedInstruction,
+                            instructionComments = uiState.methodComments.instructionLevel,
+                            isLoading = uiState.isLoading,
+                            onSelectInstruction = viewModel::selectInstruction,
+                            activeBpLines = activeBpLines.value,
+                            onLineClick = { line ->
+                                val cls = uiState.selectedClassName ?: return@BytecodePanel
+                                val m = uiState.selectedMethod ?: return@BytecodePanel
+                                debuggerState.requestToggleFromInspector(
+                                    className = cls,
+                                    methodName = m.name,
+                                    methodSignature = m.descriptor,
+                                    line = line,
+                                )
+                            },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                     ViewMode.CFG -> CfgPanel(
                         uiState = uiState,
                         onBlockClick = viewModel::selectBlock,
@@ -284,6 +380,8 @@ private fun BytecodePanel(
     instructionComments: Map<Int, String>,
     isLoading: Boolean,
     onSelectInstruction: (Instruction?) -> Unit,
+    activeBpLines: Set<Int> = emptySet(),
+    onLineClick: ((Int) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -346,6 +444,10 @@ private fun BytecodePanel(
                                 instruction = instruction,
                                 isSelected = instruction == selectedInstruction,
                                 comment = instructionComments[instruction.offset],
+                                bpActive = instruction.lineNumber?.let { it in activeBpLines } ?: false,
+                                onLineClick = if (onLineClick != null) {
+                                    instruction.lineNumber?.let { line -> { onLineClick(line) } }
+                                } else null,
                                 onClick = {
                                     onSelectInstruction(
                                         if (instruction == selectedInstruction) null else instruction
@@ -366,6 +468,8 @@ private fun InstructionRow(
     isSelected: Boolean,
     comment: String?,
     onClick: () -> Unit,
+    bpActive: Boolean = false,
+    onLineClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val color = linearInstructionColor(instruction.type)
@@ -391,12 +495,33 @@ private fun InstructionRow(
                     modifier = Modifier.width(36.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Text(
-                    text = instruction.lineNumber?.toString() ?: "",
-                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                    modifier = Modifier.width(40.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                // Line column doubles as a bp gutter. Click toggles a line bp
+                // when the instruction has a line number; instructions without
+                // line info (synthetic / lambda glue) stay non-clickable.
+                val lineLabel = instruction.lineNumber?.toString() ?: ""
+                val lineModifier = if (onLineClick != null) {
+                    Modifier.width(40.dp).clickable(onClick = onLineClick)
+                } else {
+                    Modifier.width(40.dp)
+                }
+                Row(
+                    modifier = lineModifier,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (bpActive) {
+                        Text(
+                            text = "●",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFFE53935),
+                        )
+                        Spacer(Modifier.width(2.dp))
+                    }
+                    Text(
+                        text = lineLabel,
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Text(
                     text = instruction.mnemonic,
                     style = MaterialTheme.typography.bodySmall.copy(
@@ -688,6 +813,8 @@ private fun DecompiledPanel(
     isLoading: Boolean,
     renamedSymbols: Map<String, String> = emptyMap(),
     onRenameConfirm: ((String, String) -> Unit)? = null,
+    bpLines: Set<Int> = emptySet(),
+    onLineClick: ((Int) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     var renameTarget by remember { mutableStateOf<String?>(null) }
@@ -729,6 +856,8 @@ private fun DecompiledPanel(
                         onRenameRequest = if (onRenameConfirm != null) {
                             { shortName -> renameTarget = shortName }
                         } else null,
+                        bpLines = bpLines,
+                        onLineClick = onLineClick,
                     )
                 }
             }

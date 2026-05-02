@@ -31,10 +31,17 @@ interface Decompiler {
 sealed class DecompilationResult {
     /**
      * Successful decompilation.
+     *
+     * @param lineMap Optional mapping from decompiled-source line number to the
+     *   original bytecode line number (from the class's LineNumberTable). Null
+     *   when Vineflower did not produce a mapping for this class — typically
+     *   when [DecompilerOptions.bytecodeSourceMapping] was off, or when the
+     *   class has no debug info to back-map to.
      */
     data class Success(
         val sourceCode: String,
-        val warnings: List<String> = emptyList()
+        val warnings: List<String> = emptyList(),
+        val lineMap: DecompiledLineMap? = null,
     ) : DecompilationResult()
 
     /**

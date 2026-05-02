@@ -15,18 +15,25 @@ public class AgentConfig {
     
     private final int port;
     private final boolean debug;
-    
-    private AgentConfig(int port, boolean debug) {
+    private final String debuggerDllPath;
+
+    private AgentConfig(int port, boolean debug, String debuggerDllPath) {
         this.port = port;
         this.debug = debug;
+        this.debuggerDllPath = debuggerDllPath;
     }
-    
+
     public int getPort() {
         return port;
     }
-    
+
     public boolean isDebug() {
         return debug;
+    }
+
+    /** Absolute path to bytesight_debugger.dll passed by the attaching process, or empty. */
+    public String getDebuggerDllPath() {
+        return debuggerDllPath;
     }
     
     /**
@@ -48,8 +55,9 @@ public class AgentConfig {
         }
         
         boolean debug = Boolean.parseBoolean(args.getOrDefault("debug", "false"));
-        
-        return new AgentConfig(port, debug);
+        String debuggerDllPath = args.getOrDefault("debuggerDllPath", "");
+
+        return new AgentConfig(port, debug, debuggerDllPath);
     }
     
     private static Map<String, String> parseArgs(String agentArgs) {

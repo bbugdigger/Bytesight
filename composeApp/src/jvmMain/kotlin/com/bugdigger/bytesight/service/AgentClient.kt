@@ -282,6 +282,139 @@ class AgentClient {
         }
     }
 
+    /**
+     * Installs a debugger breakpoint. Use [setMethodBreakpoint] for the common case;
+     * this overload is for building a [Breakpoint] proto directly (e.g. from a UI model).
+     */
+    suspend fun setBreakpoint(
+        connectionKey: String,
+        breakpoint: Breakpoint,
+    ): Result<BreakpointResponse> = withContext(Dispatchers.IO) {
+        withConnection(connectionKey) { stub ->
+            stub.setBreakpoint(setBreakpointRequest {
+                this.breakpoint = breakpoint
+            })
+        }
+    }
+
+    /**
+     * Convenience overload that installs a method breakpoint with the given mode.
+     */
+    suspend fun setMethodBreakpoint(
+        connectionKey: String,
+        breakpointId: String,
+        className: String,
+        methodName: String,
+        methodSignature: String = "",
+        mode: MethodBreakpointMode = MethodBreakpointMode.METHOD_BP_ENTRY,
+        enabled: Boolean = true,
+    ): Result<BreakpointResponse> = setBreakpoint(connectionKey, breakpoint {
+        this.id = breakpointId
+        this.method = methodLocation {
+            this.className = className
+            this.methodName = methodName
+            this.methodSignature = methodSignature
+            this.mode = mode
+        }
+        this.enabled = enabled
+    })
+
+    /**
+     * Updates an existing breakpoint's mutable fields (enabled, condition,
+     * skip_count) without remove + reinstall. The agent looks up the bp by id
+     * and applies the new values; location stays as it was.
+     */
+    suspend fun updateBreakpoint(
+        connectionKey: String,
+        breakpoint: Breakpoint,
+    ): Result<BreakpointResponse> = withContext(Dispatchers.IO) {
+        withConnection(connectionKey) { stub ->
+            stub.updateBreakpoint(setBreakpointRequest {
+                this.breakpoint = breakpoint
+            })
+        }
+    }
+
+    /**
+     * Removes a breakpoint by id.
+     */
+    suspend fun removeBreakpoint(
+        connectionKey: String,
+        breakpointId: String,
+    ): Result<BreakpointResponse> = withContext(Dispatchers.IO) {
+        withConnection(connectionKey) { stub ->
+            stub.removeBreakpoint(removeBreakpointRequest {
+                this.breakpointId = breakpointId
+            })
+        }
+    }
+
+    /**
+     * Lists all currently installed breakpoints.
+     */
+    suspend fun listBreakpoints(connectionKey: String): Result<List<Breakpoint>> = withContext(Dispatchers.IO) {
+        withConnection(connectionKey) { stub ->
+            stub.listBreakpoints(listBreakpointsRequest { }).breakpointsList.toList()
+        }
+    }
+
+    /**
+     * Streams debugger events (breakpoint hits, thread state changes).
+     */
+    fun streamDebuggerEvents(connectionKey: String): Result<Flow<DebuggerEvent>> {
+        val conn = connections[connectionKey]
+            ?: return Result.failure(IllegalStateException("Not connected: $connectionKey"))
+        return runCatching {
+            conn.stub.subscribeDebuggerEvents(subscribeRequest { })
+        }
+    }
+
+    /**
+     * Resumes a suspended thread. Pass [threadId] == 0 to resume all suspended threads.
+     */
+    suspend fun resume(
+        connectionKey: String,
+        threadId: Long = 0,
+    ): Result<ResumeResponse> = withContext(Dispatchers.IO) {
+        withConnection(connectionKey) { stub ->
+            stub.resume(resumeRequest {
+                this.threadId = threadId
+            })
+        }
+    }
+
+    /**
+     * Steps the given thread one source line. The agent installs transient
+     * breakpoints based on [kind] and resumes the thread; a [DebuggerEvent.step]
+     * arrives via [streamDebuggerEvents] when the step lands.
+     */
+    suspend fun step(
+        connectionKey: String,
+        threadId: Long,
+        kind: StepKind,
+    ): Result<StepResponse> = withContext(Dispatchers.IO) {
+        withConnection(connectionKey) { stub ->
+            stub.step(stepRequest {
+                this.threadId = threadId
+                this.kind = kind
+            })
+        }
+    }
+
+    /**
+     * Pauses threads. v1 agent returns an error — pause-outside-breakpoint is not implemented.
+     */
+    suspend fun pause(
+        connectionKey: String,
+        threadId: Long = 0,
+    ): Result<PauseResponse> = withContext(Dispatchers.IO) {
+        withConnection(connectionKey) { stub ->
+            stub.pause(pauseRequest {
+                this.threadId = threadId
+            })
+        }
+    }
+
     private inline fun <T> withConnection(
         connectionKey: String,
         block: (BytesightAgentGrpcKt.BytesightAgentCoroutineStub) -> T,

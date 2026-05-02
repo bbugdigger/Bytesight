@@ -1,0 +1,453 @@
+package com.bugdigger.bytesight.ui.debugger
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.bugdigger.bytesight.debugger.CursorMode
+import com.bugdigger.bytesight.debugger.DebuggerState
+import com.bugdigger.bytesight.debugger.ExecutionCursor
+import com.bugdigger.bytesight.debugger.HitDirection
+import com.bugdigger.bytesight.debugger.LiveCursor
+import com.bugdigger.bytesight.debugger.RecordingFile
+import com.bugdigger.bytesight.debugger.RecordingLog
+import com.bugdigger.bytesight.debugger.RecordingState
+import com.bugdigger.bytesight.debugger.ReplayCursor
+import com.bugdigger.bytesight.service.AgentClient
+import com.bugdigger.protocol.Breakpoint
+import com.bugdigger.protocol.DebuggerEvent
+import com.bugdigger.protocol.FrameSnapshot
+import com.bugdigger.protocol.BreakpointHit
+import com.bugdigger.protocol.MethodBreakpointMode
+import com.bugdigger.protocol.StepKind
+import com.bugdigger.protocol.breakpoint
+import com.bugdigger.protocol.lineLocation
+import com.bugdigger.protocol.methodLocation
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import java.nio.file.Path
+import java.util.UUID
+
+/**
+ * ViewModel for the Debugger screen. Presents an [ExecutionCursor]-backed view of
+ * program state and mediates user actions (install/remove/toggle breakpoints,
+ * resume/stop) against the agent.
+ *
+ * The VM does **not** hold debugger state directly — threads / frames come from
+ * the injected cursor (so a future ReplayCursor can swap in with no VM changes),
+ * and breakpoints come from the session-scoped [DebuggerState] singleton.
+ */
+class DebuggerViewModel(
+    private val agentClient: AgentClient,
+    private val liveCursor: LiveCursor,
+    private val replayCursor: ReplayCursor,
+    private val recordingLog: RecordingLog,
+    private val debuggerState: DebuggerState,
+) : ViewModel() {
+
+    val breakpoints: StateFlow<List<DebuggerState.UiBreakpoint>> = debuggerState.breakpoints
+
+    private val _cursorMode = MutableStateFlow<CursorMode>(CursorMode.Live)
+    val cursorMode: StateFlow<CursorMode> = _cursorMode.asStateFlow()
+
+    /** Replay log for the timeline scrubber and recording-state badge. */
+    val recordingState: StateFlow<RecordingState> = recordingLog.state
+    val recordedEvents: StateFlow<List<DebuggerEvent>> = recordingLog.events
+
+    /** Active cursor (Live or Replay) according to [cursorMode]. */
+    private val activeCursor: ExecutionCursor get() = when (_cursorMode.value) {
+        is CursorMode.Live -> liveCursor
+        is CursorMode.Replay -> replayCursor
+    }
+
+    // Each public StateFlow combines mode + both cursors so the UI re-renders
+    // automatically when either the mode flips or the underlying cursor updates.
+    // Unconfined dispatcher keeps the routing synchronous for tests and avoids
+    // any thread hop on user interactions.
+    private val routingScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+
+    val threads: StateFlow<List<com.bugdigger.bytesight.debugger.ThreadView>> =
+        combine(_cursorMode, liveCursor.threads, replayCursor.threads) { m, l, r ->
+            if (m is CursorMode.Live) l else r
+        }.stateIn(routingScope, SharingStarted.Eagerly, emptyList())
+
+    val currentThreadId: StateFlow<Long?> =
+        combine(_cursorMode, liveCursor.currentThreadId, replayCursor.currentThreadId) { m, l, r ->
+            if (m is CursorMode.Live) l else r
+        }.stateIn(routingScope, SharingStarted.Eagerly, null)
+
+    val currentFrame: StateFlow<FrameSnapshot?> =
+        combine(_cursorMode, liveCursor.currentFrame, replayCursor.currentFrame) { m, l, r ->
+            if (m is CursorMode.Live) l else r
+        }.stateIn(routingScope, SharingStarted.Eagerly, null)
+
+    val callStack: StateFlow<List<FrameSnapshot>> =
+        combine(_cursorMode, liveCursor.callStack, replayCursor.callStack) { m, l, r ->
+            if (m is CursorMode.Live) l else r
+        }.stateIn(routingScope, SharingStarted.Eagerly, emptyList())
+
+    val lastHit: StateFlow<BreakpointHit?> =
+        combine(_cursorMode, liveCursor.lastHit, replayCursor.lastHit) { m, l, r ->
+            if (m is CursorMode.Live) l else r
+        }.stateIn(routingScope, SharingStarted.Eagerly, null)
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
+    private val _busy = MutableStateFlow(false)
+    val busy: StateFlow<Boolean> = _busy.asStateFlow()
+
+    private var connectionKey: String? = null
+    private var pendingToggleJob: Job? = null
+
+    fun setConnectionKey(key: String) {
+        if (connectionKey == key) return
+        connectionKey = key
+        refreshBreakpointsFromAgent()
+        observePendingToggle()
+    }
+
+    private fun refreshBreakpointsFromAgent() {
+        val key = connectionKey ?: return
+        viewModelScope.launch {
+            agentClient.listBreakpoints(key)
+                .onSuccess { list -> debuggerState.setBreakpoints(list.map { it.toUi(defaultLine = 0) }) }
+                .onFailure { e -> _error.value = "Failed to list breakpoints: ${e.message}" }
+        }
+    }
+
+    private fun observePendingToggle() {
+        pendingToggleJob?.cancel()
+        pendingToggleJob = viewModelScope.launch {
+            debuggerState.pendingToggle.collect { toggle ->
+                if (toggle != null) {
+                    applyToggle(toggle)
+                    debuggerState.clearPending()
+                }
+            }
+        }
+    }
+
+    private fun applyToggle(toggle: DebuggerState.PendingToggle) {
+        val existing = debuggerState.findAt(
+            className = toggle.className,
+            methodName = toggle.methodName,
+            methodSignature = toggle.methodSignature,
+            line = toggle.line,
+        )
+        if (existing != null) {
+            removeBreakpoint(existing.id)
+        } else if (toggle.line > 0) {
+            // Line-number > 0 means the user clicked a specific line in the
+            // Inspector bytecode gutter — install a true line breakpoint that
+            // fires at the bytecode offset of that source line.
+            addLineBreakpoint(
+                className = toggle.className,
+                line = toggle.line,
+                methodName = toggle.methodName,
+                methodSignature = toggle.methodSignature,
+            )
+        } else {
+            addMethodEntryBreakpoint(
+                className = toggle.className,
+                methodName = toggle.methodName,
+                methodSignature = toggle.methodSignature,
+                displayLine = toggle.line,
+            )
+        }
+    }
+
+    fun addLineBreakpoint(
+        className: String,
+        line: Int,
+        methodName: String,
+        methodSignature: String,
+    ) {
+        val key = connectionKey ?: return
+        val id = UUID.randomUUID().toString()
+        viewModelScope.launch {
+            _busy.value = true
+            val proto = breakpoint {
+                this.id = id
+                this.line = lineLocation {
+                    this.className = className
+                    this.lineNumber = line
+                }
+                this.enabled = true
+            }
+            agentClient.setBreakpoint(key, proto)
+                .onSuccess { resp ->
+                    if (resp.success) {
+                        debuggerState.addBreakpoint(
+                            DebuggerState.UiBreakpoint(
+                                id = id,
+                                className = className,
+                                methodName = methodName,
+                                methodSignature = methodSignature,
+                                displayLine = line,
+                                // mode is unused for line bps but the data class requires it
+                                mode = MethodBreakpointMode.METHOD_BP_ENTRY,
+                                enabled = true,
+                            ),
+                        )
+                    } else {
+                        _error.value = resp.error.ifEmpty { "Failed to install line breakpoint" }
+                    }
+                }
+                .onFailure { e -> _error.value = "Failed to install line breakpoint: ${e.message}" }
+            _busy.value = false
+        }
+    }
+
+    fun addMethodEntryBreakpoint(
+        className: String,
+        methodName: String,
+        methodSignature: String,
+        displayLine: Int,
+    ) {
+        val key = connectionKey ?: return
+        val id = UUID.randomUUID().toString()
+        viewModelScope.launch {
+            _busy.value = true
+            agentClient.setMethodBreakpoint(
+                connectionKey = key,
+                breakpointId = id,
+                className = className,
+                methodName = methodName,
+                methodSignature = methodSignature,
+                mode = MethodBreakpointMode.METHOD_BP_ENTRY,
+                enabled = true,
+            ).onSuccess { resp ->
+                if (resp.success) {
+                    debuggerState.addBreakpoint(
+                        DebuggerState.UiBreakpoint(
+                            id = id,
+                            className = className,
+                            methodName = methodName,
+                            methodSignature = methodSignature,
+                            displayLine = displayLine,
+                            mode = MethodBreakpointMode.METHOD_BP_ENTRY,
+                            enabled = true,
+                        ),
+                    )
+                } else {
+                    _error.value = resp.error.ifEmpty { "Failed to install breakpoint" }
+                }
+            }.onFailure { e -> _error.value = "Failed to install breakpoint: ${e.message}" }
+            _busy.value = false
+        }
+    }
+
+    fun removeBreakpoint(id: String) {
+        val key = connectionKey ?: return
+        viewModelScope.launch {
+            _busy.value = true
+            agentClient.removeBreakpoint(key, id)
+                .onSuccess { resp ->
+                    if (resp.success) {
+                        debuggerState.removeBreakpoint(id)
+                    } else {
+                        _error.value = resp.error.ifEmpty { "Failed to remove breakpoint" }
+                    }
+                }
+                .onFailure { e -> _error.value = "Failed to remove breakpoint: ${e.message}" }
+            _busy.value = false
+        }
+    }
+
+    fun toggleEnabled(id: String) = updateMutable(id) { it.copy(enabled = !it.enabled) }
+
+    fun resume(threadId: Long = 0L) {
+        val key = connectionKey ?: return
+        viewModelScope.launch {
+            agentClient.resume(key, threadId)
+                .onFailure { e -> _error.value = "Failed to resume: ${e.message}" }
+        }
+    }
+
+    fun resumeCurrentThread() {
+        val tid = currentThreadId.value ?: return
+        resume(tid)
+    }
+
+    fun resumeAll() = resume(0L)
+
+    /** Updates a bp's condition expression in-place (no remove/reinstall). */
+    fun updateCondition(bpId: String, condition: String) = updateMutable(bpId) { bp ->
+        bp.copy(condition = condition)
+    }
+
+    /** Updates a bp's skip_count (skip first N hits). */
+    fun updateSkipCount(bpId: String, skipCount: Int) = updateMutable(bpId) { bp ->
+        bp.copy(skipCount = skipCount.coerceAtLeast(0))
+    }
+
+    private fun updateMutable(bpId: String, transform: (DebuggerState.UiBreakpoint) -> DebuggerState.UiBreakpoint) {
+        val key = connectionKey ?: return
+        val current = debuggerState.breakpoints.value.firstOrNull { it.id == bpId } ?: return
+        val next = transform(current)
+        viewModelScope.launch {
+            val proto = breakpoint {
+                this.id = next.id
+                this.method = methodLocation {
+                    this.className = next.className
+                    this.methodName = next.methodName
+                    this.methodSignature = next.methodSignature
+                    this.mode = next.mode
+                }
+                this.enabled = next.enabled
+                this.condition = next.condition
+                this.skipCount = next.skipCount
+            }
+            agentClient.updateBreakpoint(key, proto)
+                .onSuccess { resp ->
+                    if (resp.success) {
+                        debuggerState.updateBreakpoint(bpId) { _ -> next }
+                    } else {
+                        _error.value = resp.error.ifEmpty { "Failed to update breakpoint" }
+                    }
+                }
+                .onFailure { e -> _error.value = "Failed to update breakpoint: ${e.message}" }
+        }
+    }
+
+    /** Step the current thread one source line; lands at next line in same method. */
+    fun stepOver() = step(StepKind.STEP_OVER)
+    /** Step into a callee on the current line, falling through to step-over otherwise. */
+    fun stepInto() = step(StepKind.STEP_INTO)
+    /** Step out of the current method; lands at method exit. */
+    fun stepOut() = step(StepKind.STEP_OUT)
+
+    private fun step(kind: StepKind) {
+        val key = connectionKey ?: return
+        val tid = currentThreadId.value ?: return
+        viewModelScope.launch {
+            agentClient.step(key, tid, kind).onSuccess { resp ->
+                if (!resp.success) {
+                    _error.value = resp.error.ifEmpty { "Failed to step ($kind)" }
+                }
+            }.onFailure { e -> _error.value = "Failed to step: ${e.message}" }
+        }
+    }
+
+    fun stopDebugging() {
+        val key = connectionKey ?: return
+        viewModelScope.launch {
+            _busy.value = true
+            val current = debuggerState.breakpoints.value
+            for (bp in current) {
+                agentClient.removeBreakpoint(key, bp.id)
+            }
+            debuggerState.setBreakpoints(emptyList())
+            agentClient.resume(key, 0L)
+            _busy.value = false
+        }
+    }
+
+    fun selectThread(id: Long) = activeCursor.selectThread(id)
+
+    fun selectFrame(depth: Int) = activeCursor.selectFrame(depth)
+
+    // ---------------- Time-Travel Debugging (Phase 4) ----------------
+
+    /** Start capturing live events into [recordingLog]. UI badge: REC ●. */
+    fun startRecording() = recordingLog.startRecording()
+
+    /** Stop appending new events. Existing events stay scrubbable. */
+    fun stopRecording() = recordingLog.stopRecording()
+
+    /** Drop all captured events and return to IDLE. */
+    fun clearRecording() = recordingLog.clear()
+
+    /**
+     * Move the playhead to [sequenceId] and switch the UI into Replay mode.
+     * The Call Stack / Variables / Source panels re-render against the
+     * snapshot at that point in time.
+     */
+    fun seekTo(sequenceId: Long) {
+        replayCursor.seekTo(sequenceId)
+        _cursorMode.value = CursorMode.Replay(sequenceId)
+    }
+
+    /** Snap the UI back to the live JVM state. Recording is unaffected. */
+    fun resumeLive() {
+        _cursorMode.value = CursorMode.Live
+    }
+
+    /**
+     * Move the playhead to the previous [BreakpointHit] on the currently
+     * focused thread (or any thread if [acrossAllThreads] is set, e.g. via
+     * Shift-click on the Prev button).
+     */
+    fun prevHit(acrossAllThreads: Boolean = false) {
+        val from = currentScrubSequenceId() ?: return
+        val tid = if (acrossAllThreads) null else currentThreadId.value
+        val target = recordingLog.findHit(from, tid, HitDirection.BACKWARD)
+        if (target != null) {
+            seekTo(target.sequenceId)
+        } else if (_cursorMode.value !is CursorMode.Replay) {
+            // From Live, with no prior hit — nothing to do; stay live.
+        }
+    }
+
+    fun nextHit(acrossAllThreads: Boolean = false) {
+        val from = currentScrubSequenceId() ?: Long.MIN_VALUE
+        val tid = if (acrossAllThreads) null else currentThreadId.value
+        val target = recordingLog.findHit(from, tid, HitDirection.FORWARD)
+        if (target != null) {
+            seekTo(target.sequenceId)
+        }
+    }
+
+    private fun currentScrubSequenceId(): Long? = when (val m = _cursorMode.value) {
+        is CursorMode.Replay -> m.sequenceId
+        is CursorMode.Live -> null
+    }
+
+    /** Persist the current recorded log to [path] (.btsrec). */
+    fun saveRecording(path: Path) {
+        try {
+            RecordingFile.saveTo(path, recordingLog.events.value)
+        } catch (e: Exception) {
+            _error.value = "Failed to save recording: ${e.message}"
+        }
+    }
+
+    /** Load a previously saved recording from [path]; enters REPLAY state. */
+    fun loadRecording(path: Path) {
+        try {
+            val events = RecordingFile.loadFrom(path)
+            recordingLog.replaceEvents(events)
+            // Snap the playhead to the first hit if any, otherwise the first event.
+            val firstHit = events.firstOrNull { it.kindCase == DebuggerEvent.KindCase.HIT }
+            val anchor = firstHit?.sequenceId ?: events.firstOrNull()?.sequenceId
+            if (anchor != null) seekTo(anchor) else _cursorMode.value = CursorMode.Live
+        } catch (e: Exception) {
+            _error.value = "Failed to load recording: ${e.message}"
+        }
+    }
+
+    fun clearError() {
+        _error.value = null
+    }
+
+    private fun Breakpoint.toUi(defaultLine: Int): DebuggerState.UiBreakpoint {
+        val m = method
+        return DebuggerState.UiBreakpoint(
+            id = id,
+            className = m.className,
+            methodName = m.methodName,
+            methodSignature = m.methodSignature,
+            displayLine = defaultLine,
+            mode = m.mode,
+            enabled = enabled,
+        )
+    }
+}
