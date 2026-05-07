@@ -3,7 +3,7 @@ package com.bugdigger.ai
 import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.agents.ext.agent.reActStrategy
+import ai.koog.agents.ext.agent.chatAgentStrategy
 import ai.koog.prompt.executor.clients.anthropic.AnthropicModels
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.executor.clients.openrouter.OpenRouterModels
@@ -98,7 +98,7 @@ class BytesightAgent(
         return AIAgent(
             executor,
             agentConfig,
-            reActStrategy(c.maxIterations),
+            chatAgentStrategy(),
             registry,
         )
     }
