@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {
@@ -39,6 +40,9 @@ kotlin {
             // DI - Koin
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
+
+            // Project file persistence
+            implementation(libs.kotlinx.serialization.json)
 
             // Logging
             implementation(libs.slf4j.api)

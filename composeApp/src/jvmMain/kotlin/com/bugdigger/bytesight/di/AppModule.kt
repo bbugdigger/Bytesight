@@ -12,6 +12,7 @@ import com.bugdigger.bytesight.service.AttachService
 import com.bugdigger.bytesight.service.BytesightAgentServicesImpl
 import com.bugdigger.bytesight.service.CommentStore
 import com.bugdigger.bytesight.service.ConnectionRegistry
+import com.bugdigger.bytesight.service.ProjectService
 import com.bugdigger.bytesight.service.RenameStore
 import com.bugdigger.bytesight.ui.ai.AIViewModel
 import com.bugdigger.bytesight.ui.attach.AttachViewModel
@@ -28,6 +29,7 @@ import com.bugdigger.core.decompiler.Decompiler
 import com.bugdigger.core.decompiler.DecompilerOptions
 import com.bugdigger.core.decompiler.VineflowerDecompiler
 import com.bugdigger.core.source.JarReader
+import kotlinx.serialization.json.Json
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
@@ -62,6 +64,20 @@ val appModule = module {
     // ApkClassSource and BtsProjectClassSource will reuse these singletons.
     single { JarReader() }
     single { StaticHierarchyExtractor() }
+
+    // Project file persistence (.bts save/load).
+    single { Json { prettyPrint = true; ignoreUnknownKeys = true } }
+    single {
+        ProjectService(
+            connectionRegistry = get(),
+            renameStore = get(),
+            commentStore = get(),
+            debuggerState = get(),
+            hierarchyExtractor = get(),
+            json = get(),
+            bytesightVersion = "0.1.0",
+        )
+    }
 
     // AI agent services (wires BytesightAgentServices to real services)
     single<BytesightAgentServices> { BytesightAgentServicesImpl(get(), get(), get(), get()) }

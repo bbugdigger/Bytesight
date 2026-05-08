@@ -22,6 +22,9 @@ asm = "9.7.1"
 # Decompilation
 vineflower = "1.10.1"
 
+# Serialization
+kotlinx-serialization = "1.7.3"
+
 # DI
 koin = "4.0.0"
 
@@ -71,6 +74,9 @@ asm-util = { module = "org.ow2.asm:asm-util", version.ref = "asm" }
 # Decompilation
 vineflower = { module = "org.vineflower:vineflower", version.ref = "vineflower" }
 
+# Serialization
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+
 # DI - Koin
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
@@ -95,4 +101,5 @@ composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMul
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 protobuf = { id = "com.google.protobuf", version.ref = "protobuf-plugin" }

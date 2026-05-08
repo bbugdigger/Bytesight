@@ -4,6 +4,9 @@ import com.bugdigger.protocol.MethodBreakpointMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.Json
 
 /**
  * Session-scoped state shared across tabs for the debugger. Mirrors the
@@ -88,4 +91,64 @@ class DebuggerState {
         val methodSignature: String,
         val line: Int,
     )
+
+    /**
+     * Serialize the breakpoint list. Persists only the static fields
+     * (id, location, mode, enabled, condition, skipCount). Runtime fields
+     * (hitCount, conditionError) are reset to defaults on restore.
+     */
+    fun serialize(json: Json = DEFAULT_JSON): String {
+        val list = _breakpoints.value.map { bp ->
+            SerializedBp(
+                id = bp.id,
+                className = bp.className,
+                methodName = bp.methodName,
+                methodSignature = bp.methodSignature,
+                displayLine = bp.displayLine,
+                mode = bp.mode.name,
+                enabled = bp.enabled,
+                condition = bp.condition,
+                skipCount = bp.skipCount,
+            )
+        }
+        return json.encodeToString(LIST_SERIALIZER, list)
+    }
+
+    fun restore(text: String, json: Json = DEFAULT_JSON) {
+        val list: List<SerializedBp> = json.decodeFromString(LIST_SERIALIZER, text)
+        _breakpoints.value = list.map { s ->
+            UiBreakpoint(
+                id = s.id,
+                className = s.className,
+                methodName = s.methodName,
+                methodSignature = s.methodSignature,
+                displayLine = s.displayLine,
+                mode = MethodBreakpointMode.valueOf(s.mode),
+                enabled = s.enabled,
+                condition = s.condition,
+                skipCount = s.skipCount,
+                hitCount = 0,
+                conditionError = null,
+            )
+        }
+    }
+
+    @Serializable
+    private data class SerializedBp(
+        val id: String,
+        val className: String,
+        val methodName: String,
+        val methodSignature: String,
+        val displayLine: Int,
+        /** Stored by enum name for forward-compat across proto changes. */
+        val mode: String,
+        val enabled: Boolean,
+        val condition: String,
+        val skipCount: Int,
+    )
+
+    companion object {
+        private val DEFAULT_JSON = Json { prettyPrint = true; ignoreUnknownKeys = true }
+        private val LIST_SERIALIZER = ListSerializer(SerializedBp.serializer())
+    }
 }

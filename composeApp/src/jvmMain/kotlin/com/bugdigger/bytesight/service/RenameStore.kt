@@ -4,6 +4,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.Json
 
 /**
  * Session-scoped in-memory store for user-assigned symbol renames. Singleton so that
@@ -75,6 +78,16 @@ class RenameStore {
             .toMap()
     }
 
+    /** Serialize the current rename map as JSON. */
+    fun serialize(json: Json = DEFAULT_JSON): String =
+        json.encodeToString(MAP_SERIALIZER, _renames.value)
+
+    /** Replace the rename map with the contents of the given JSON. */
+    fun restore(text: String, json: Json = DEFAULT_JSON) {
+        val map: Map<String, String> = json.decodeFromString(MAP_SERIALIZER, text)
+        _renames.value = map
+    }
+
     companion object {
         /**
          * Extract the short (simple) name from a fully-qualified identifier.
@@ -89,5 +102,8 @@ class RenameStore {
             // Take last dot-separated segment
             return name.substringAfterLast('.')
         }
+
+        private val DEFAULT_JSON = Json { prettyPrint = true; ignoreUnknownKeys = true }
+        private val MAP_SERIALIZER = MapSerializer(String.serializer(), String.serializer())
     }
 }

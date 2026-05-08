@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.kotlinJvm)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 group = "com.bugdigger"
@@ -19,6 +20,9 @@ dependencies {
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.core)
+
+    // Serialization (project file format)
+    implementation(libs.kotlinx.serialization.json)
 
     // Testing
     testImplementation(libs.kotlin.test)
