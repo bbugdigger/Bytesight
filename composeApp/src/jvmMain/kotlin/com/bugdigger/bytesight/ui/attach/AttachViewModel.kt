@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bugdigger.bytesight.service.AgentClient
 import com.bugdigger.bytesight.service.AttachService
+import com.bugdigger.bytesight.service.ConnectionRegistry
+import com.bugdigger.bytesight.source.AgentClassSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,6 +32,7 @@ data class AttachUiState(
 class AttachViewModel(
     private val attachService: AttachService,
     private val agentClient: AgentClient,
+    private val connectionRegistry: ConnectionRegistry,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AttachUiState())
@@ -91,6 +94,11 @@ class AttachViewModel(
                     // Then connect our gRPC client to the agent
                     agentClient.connect(port = port)
                         .onSuccess { key ->
+                            // Build the live source and install it on the registry
+                            // so VMs that read classSource pick it up immediately.
+                            val source = AgentClassSource(agentClient, key)
+                            connectionRegistry.setSource(source, connectionKey = key)
+
                             _uiState.update {
                                 it.copy(
                                     isAttaching = false,
@@ -124,6 +132,7 @@ class AttachViewModel(
     fun disconnect() {
         _uiState.value.connectionKey?.let { key ->
             agentClient.disconnect(key)
+            connectionRegistry.setSource(null, null)
             _uiState.update { it.copy(connectionKey = null) }
         }
     }

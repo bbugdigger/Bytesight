@@ -2,8 +2,9 @@ package com.bugdigger.bytesight.ui.browser
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.bugdigger.bytesight.service.AgentClient
+import com.bugdigger.bytesight.service.ConnectionRegistry
 import com.bugdigger.bytesight.service.RenameStore
+import com.bugdigger.bytesight.source.ClassSource
 import com.bugdigger.core.decompiler.Decompiler
 import com.bugdigger.core.decompiler.DecompilationResult
 import com.bugdigger.protocol.ClassInfo
@@ -34,10 +35,11 @@ data class ClassBrowserUiState(
 
 /**
  * ViewModel for the Class Browser screen.
- * Handles class listing, filtering, and bytecode retrieval.
+ * Reads class metadata + bytecode through the active [ClassSource]
+ * (installed by the Attach screen via [ConnectionRegistry]).
  */
 class ClassBrowserViewModel(
-    private val agentClient: AgentClient,
+    private val connectionRegistry: ConnectionRegistry,
     private val decompiler: Decompiler,
     private val renameStore: RenameStore,
 ) : ViewModel() {
@@ -45,7 +47,7 @@ class ClassBrowserViewModel(
     private val _uiState = MutableStateFlow(ClassBrowserUiState())
     val uiState: StateFlow<ClassBrowserUiState> = _uiState.asStateFlow()
 
-    private var connectionKey: String? = null
+    private var activeSource: ClassSource? = null
 
     init {
         // Re-apply renames whenever the rename map changes
@@ -58,55 +60,54 @@ class ClassBrowserViewModel(
                 }
             }
         }
-    }
-
-    /**
-     * Sets the connection key to use for agent communication.
-     */
-    fun setConnectionKey(key: String) {
-        if (connectionKey != key) {
-            connectionKey = key
-            // Drop the previous attach's class list and any drilled-into class.
-            // Keep user preferences (searchQuery, includeSystemClasses) so the
-            // browser opens with the user's last-used filter against the new
-            // process — usually what they want when they reattach to retry.
-            val prev = _uiState.value
-            _uiState.value = ClassBrowserUiState(
-                searchQuery = prev.searchQuery,
-                includeSystemClasses = prev.includeSystemClasses,
-            )
-            refreshClasses()
+        // React to source changes — replaces the old setConnectionKey call site.
+        viewModelScope.launch {
+            connectionRegistry.classSource.collect { source ->
+                onSourceChanged(source)
+            }
         }
     }
 
+    private fun onSourceChanged(source: ClassSource?) {
+        if (activeSource === source) return
+        activeSource = source
+        // Drop the previous source's class list and any drilled-into class.
+        // Keep user preferences (searchQuery, includeSystemClasses) so the
+        // browser opens with the user's last-used filter against the new
+        // source — usually what they want when they reattach to retry.
+        val prev = _uiState.value
+        _uiState.value = ClassBrowserUiState(
+            searchQuery = prev.searchQuery,
+            includeSystemClasses = prev.includeSystemClasses,
+        )
+        if (source != null) refreshClasses()
+    }
+
     /**
-     * Refreshes the list of loaded classes from the agent.
+     * Refreshes the list of loaded classes from the active source.
      */
     fun refreshClasses() {
-        val key = connectionKey ?: return
-
+        val source = activeSource ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-
-            agentClient.listClasses(
-                connectionKey = key,
-                includeSystemClasses = _uiState.value.includeSystemClasses,
-            ).onSuccess { classes ->
-                _uiState.update {
-                    it.copy(
-                        classes = classes,
-                        filteredClasses = filterClasses(classes, it.searchQuery),
-                        isLoading = false,
-                    )
+            source.listClasses(_uiState.value.includeSystemClasses)
+                .onSuccess { classes ->
+                    _uiState.update {
+                        it.copy(
+                            classes = classes,
+                            filteredClasses = filterClasses(classes, it.searchQuery),
+                            isLoading = false,
+                        )
+                    }
                 }
-            }.onFailure { e ->
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = "Failed to load classes: ${e.message}",
-                    )
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = "Failed to load classes: ${e.message}",
+                        )
+                    }
                 }
-            }
         }
     }
 
@@ -152,22 +153,19 @@ class ClassBrowserViewModel(
      * Fetches bytecode for the specified class and decompiles it.
      */
     private fun fetchBytecode(className: String) {
-        val key = connectionKey ?: return
+        val source = activeSource ?: return
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingBytecode = true) }
 
-            agentClient.getClassBytecode(key, className)
-                .onSuccess { response ->
-                    val bytecode = response.bytecode.toByteArray()
+            source.getBytecode(className)
+                .onSuccess { bytecode ->
                     _uiState.update {
                         it.copy(
                             bytecode = bytecode,
                             decompiled = "// Decompiling...",
                         )
                     }
-
-                    // Decompile the bytecode
                     decompileBytecode(className, bytecode)
                 }
                 .onFailure { e ->

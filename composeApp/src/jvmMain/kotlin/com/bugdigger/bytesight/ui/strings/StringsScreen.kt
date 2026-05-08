@@ -7,7 +7,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -20,19 +19,15 @@ import com.bugdigger.core.analysis.ExtractedConstant
 import com.bugdigger.core.analysis.StringPattern
 
 /**
- * Screen for extracting and browsing string/constant values from loaded classes.
+ * Screen for extracting and browsing string/constant values from the
+ * classes the active [com.bugdigger.bytesight.source.ClassSource] exposes.
  */
 @Composable
 fun StringsScreen(
     viewModel: StringsViewModel,
-    connectionKey: String,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
-    LaunchedEffect(connectionKey) {
-        viewModel.setConnectionKey(connectionKey)
-    }
 
     Column(
         modifier = modifier

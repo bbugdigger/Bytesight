@@ -46,7 +46,6 @@ import com.bugdigger.core.analysis.InstructionCategory
 @Composable
 fun InspectorScreen(
     viewModel: InspectorViewModel,
-    connectionKey: String,
     pendingClassName: String? = null,
     pendingMethodName: String? = null,
     pendingMethodSignature: String? = null,
@@ -60,10 +59,6 @@ fun InspectorScreen(
     val density = LocalDensity.current.density
     LaunchedEffect(density) {
         viewModel.setDensity(density)
-    }
-
-    LaunchedEffect(connectionKey) {
-        viewModel.setConnectionKey(connectionKey)
     }
 
     // When navigating from another tab with a pending class (and optionally

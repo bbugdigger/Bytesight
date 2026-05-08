@@ -1,8 +1,7 @@
 package com.bugdigger.bytesight.ui.hierarchy
 
-import com.bugdigger.bytesight.service.AgentClient
+import com.bugdigger.bytesight.service.ConnectionRegistry
 import com.bugdigger.bytesight.service.RenameStore
-import io.mockk.mockk
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -18,12 +17,12 @@ import kotlin.test.assertTrue
 class HierarchyViewModelTest {
 
     private lateinit var viewModel: HierarchyViewModel
-    private lateinit var mockAgentClient: AgentClient
+    private lateinit var connectionRegistry: ConnectionRegistry
 
     @BeforeEach
     fun setup() {
-        mockAgentClient = mockk(relaxed = true)
-        viewModel = HierarchyViewModel(mockAgentClient, RenameStore())
+        connectionRegistry = ConnectionRegistry()
+        viewModel = HierarchyViewModel(connectionRegistry, RenameStore())
     }
 
     @Nested

@@ -42,6 +42,17 @@ fun App() {
     BytesightTheme {
         var navState by remember { mutableStateOf(NavigationState()) }
         val connectionRegistry: ConnectionRegistry = koinInject()
+        val activeSource by connectionRegistry.classSource.collectAsState()
+
+        // Sync source-derived state into navState whenever the source changes.
+        // The AttachViewModel installs/clears the source on the registry; we
+        // just observe + reflect.
+        LaunchedEffect(activeSource) {
+            navState = navState.copy(
+                capabilities = activeSource?.capabilities ?: emptySet(),
+                isConnected = activeSource != null,
+            )
+        }
 
         Row(
             modifier = Modifier
@@ -51,7 +62,7 @@ fun App() {
             // Sidebar navigation
             Sidebar(
                 currentScreen = navState.currentScreen,
-                isConnected = navState.isConnected,
+                capabilities = navState.capabilities,
                 onNavigate = { screen ->
                     navState = navState.copy(currentScreen = screen)
                 },
@@ -61,17 +72,15 @@ fun App() {
             MainContent(
                 navState = navState,
                 onConnected = { connectionKey ->
-                    connectionRegistry.setConnection(connectionKey)
+                    // ConnectionRegistry was already updated by AttachViewModel —
+                    // we just route to Classes here.
                     navState = navState.copy(
-                        isConnected = true,
                         connectionKey = connectionKey,
                         currentScreen = Screen.CLASS_BROWSER,
                     )
                 },
                 onDisconnected = {
-                    connectionRegistry.setConnection(null)
                     navState = navState.copy(
-                        isConnected = false,
                         connectionKey = null,
                         currentScreen = Screen.ATTACH,
                     )
@@ -130,57 +139,41 @@ private fun MainContent(
         }
 
         Screen.CLASS_BROWSER -> {
-            val connectionKey = navState.connectionKey
-            if (connectionKey != null) {
-                val viewModel: ClassBrowserViewModel = koinInject()
-                ClassBrowserScreen(
-                    viewModel = viewModel,
-                    connectionKey = connectionKey,
-                    onAskAI = onAskAI,
-                    modifier = modifier,
-                )
-            }
+            val viewModel: ClassBrowserViewModel = koinInject()
+            ClassBrowserScreen(
+                viewModel = viewModel,
+                onAskAI = onAskAI,
+                modifier = modifier,
+            )
         }
 
         Screen.HIERARCHY -> {
-            val connectionKey = navState.connectionKey
-            if (connectionKey != null) {
-                val viewModel: HierarchyViewModel = koinInject()
-                HierarchyScreen(
-                    viewModel = viewModel,
-                    connectionKey = connectionKey,
-                    modifier = modifier,
-                )
-            }
+            val viewModel: HierarchyViewModel = koinInject()
+            HierarchyScreen(
+                viewModel = viewModel,
+                modifier = modifier,
+            )
         }
 
         Screen.INSPECTOR -> {
-            val connectionKey = navState.connectionKey
-            if (connectionKey != null) {
-                val viewModel: InspectorViewModel = koinInject()
-                InspectorScreen(
-                    viewModel = viewModel,
-                    connectionKey = connectionKey,
-                    pendingClassName = navState.pendingInspectorClass,
-                    pendingMethodName = navState.pendingInspectorMethod,
-                    pendingMethodSignature = navState.pendingInspectorMethodSignature,
-                    onPendingClassConsumed = onClearPendingInspectorClass,
-                    onAskAI = onAskAI,
-                    modifier = modifier,
-                )
-            }
+            val viewModel: InspectorViewModel = koinInject()
+            InspectorScreen(
+                viewModel = viewModel,
+                pendingClassName = navState.pendingInspectorClass,
+                pendingMethodName = navState.pendingInspectorMethod,
+                pendingMethodSignature = navState.pendingInspectorMethodSignature,
+                onPendingClassConsumed = onClearPendingInspectorClass,
+                onAskAI = onAskAI,
+                modifier = modifier,
+            )
         }
 
         Screen.STRINGS -> {
-            val connectionKey = navState.connectionKey
-            if (connectionKey != null) {
-                val viewModel: StringsViewModel = koinInject()
-                StringsScreen(
-                    viewModel = viewModel,
-                    connectionKey = connectionKey,
-                    modifier = modifier,
-                )
-            }
+            val viewModel: StringsViewModel = koinInject()
+            StringsScreen(
+                viewModel = viewModel,
+                modifier = modifier,
+            )
         }
 
         Screen.TRACE -> {

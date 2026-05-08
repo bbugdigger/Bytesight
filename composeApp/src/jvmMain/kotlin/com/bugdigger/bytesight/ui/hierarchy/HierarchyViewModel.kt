@@ -2,8 +2,9 @@ package com.bugdigger.bytesight.ui.hierarchy
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.bugdigger.bytesight.service.AgentClient
+import com.bugdigger.bytesight.service.ConnectionRegistry
 import com.bugdigger.bytesight.service.RenameStore
+import com.bugdigger.bytesight.source.ClassSource
 import com.bugdigger.protocol.ClassInfo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,18 +32,18 @@ data class HierarchyUiState(
 )
 
 /**
- * ViewModel for the Class Hierarchy Explorer screen.
- * Shows inheritance relationships (extends/implements) across all loaded classes.
+ * ViewModel for the Class Hierarchy Explorer screen. Reads class metadata
+ * through the active [ClassSource] (installed via [ConnectionRegistry]).
  */
 class HierarchyViewModel(
-    private val agentClient: AgentClient,
+    private val connectionRegistry: ConnectionRegistry,
     private val renameStore: RenameStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HierarchyUiState())
     val uiState: StateFlow<HierarchyUiState> = _uiState.asStateFlow()
 
-    private var connectionKey: String? = null
+    private var activeSource: ClassSource? = null
     private var allClasses: List<ClassInfo> = emptyList()
 
     init {
@@ -51,60 +52,60 @@ class HierarchyViewModel(
                 _uiState.update { it.copy(renames = renameStore.shortNameMap()) }
             }
         }
-    }
-
-    /**
-     * Sets the connection key for agent communication.
-     */
-    fun setConnectionKey(key: String) {
-        if (connectionKey != key) {
-            connectionKey = key
-            // Drop the previous attach's hierarchy + selection. Keep filter
-            // preferences (showInterfaces, showClasses, searchQuery) since
-            // those are user-set, not data-derived.
-            allClasses = emptyList()
-            val prev = _uiState.value
-            _uiState.value = HierarchyUiState(
-                showInterfaces = prev.showInterfaces,
-                showClasses = prev.showClasses,
-                searchQuery = prev.searchQuery,
-                renames = prev.renames,
-            )
-            loadHierarchy()
+        viewModelScope.launch {
+            connectionRegistry.classSource.collect { source ->
+                onSourceChanged(source)
+            }
         }
     }
 
+    private fun onSourceChanged(source: ClassSource?) {
+        if (activeSource === source) return
+        activeSource = source
+        // Drop the previous source's hierarchy + selection. Keep filter
+        // preferences (showInterfaces, showClasses, searchQuery) since
+        // those are user-set, not data-derived.
+        allClasses = emptyList()
+        val prev = _uiState.value
+        _uiState.value = HierarchyUiState(
+            showInterfaces = prev.showInterfaces,
+            showClasses = prev.showClasses,
+            searchQuery = prev.searchQuery,
+            renames = prev.renames,
+        )
+        if (source != null) loadHierarchy()
+    }
+
     /**
-     * Loads the class hierarchy from the agent.
+     * Loads the class hierarchy from the active source.
      */
     fun loadHierarchy() {
-        val key = connectionKey ?: return
+        val source = activeSource ?: return
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
 
-            agentClient.listClasses(
-                connectionKey = key,
-                includeSystemClasses = false,
-            ).onSuccess { classes ->
-                allClasses = classes
-                val roots = HierarchyBuilder.buildHierarchy(classes)
-                val filtered = applyVisibilityFilter(roots, _uiState.value)
-                _uiState.update {
-                    it.copy(
-                        allRoots = roots,
-                        filteredRoots = HierarchyBuilder.filterTree(filtered, it.searchQuery),
-                        isLoading = false,
-                    )
+            source.listClasses(includeSystemClasses = false)
+                .onSuccess { classes ->
+                    allClasses = classes
+                    val roots = HierarchyBuilder.buildHierarchy(classes)
+                    val filtered = applyVisibilityFilter(roots, _uiState.value)
+                    _uiState.update {
+                        it.copy(
+                            allRoots = roots,
+                            filteredRoots = HierarchyBuilder.filterTree(filtered, it.searchQuery),
+                            isLoading = false,
+                        )
+                    }
                 }
-            }.onFailure { e ->
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = "Failed to load classes: ${e.message}",
-                    )
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = "Failed to load classes: ${e.message}",
+                        )
+                    }
                 }
-            }
         }
     }
 

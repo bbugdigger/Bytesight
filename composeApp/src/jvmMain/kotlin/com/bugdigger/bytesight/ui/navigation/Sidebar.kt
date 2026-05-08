@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.bugdigger.bytesight.source.Capability
 
 /**
  * Application sidebar using NavigationRail.
@@ -14,7 +15,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun Sidebar(
     currentScreen: Screen,
-    isConnected: Boolean,
+    capabilities: Set<Capability>,
     onNavigate: (Screen) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -24,21 +25,14 @@ fun Sidebar(
     ) {
         Spacer(Modifier.height(12.dp))
 
-        // Connection status indicator
-        ConnectionIndicator(isConnected = isConnected)
+        // Connection status indicator (any source = connected)
+        ConnectionIndicator(isConnected = capabilities.isNotEmpty())
 
         Spacer(Modifier.height(24.dp))
 
         // Main navigation items
         Screen.entries.forEach { screen ->
-            val enabled = when (screen) {
-                Screen.ATTACH -> true
-                Screen.CLASS_BROWSER, Screen.TRACE,
-                Screen.HIERARCHY, Screen.INSPECTOR, Screen.STRINGS, Screen.HEAP,
-                Screen.DEBUGGER -> isConnected
-                Screen.AI -> true
-                Screen.SETTINGS -> true
-            }
+            val enabled = isScreenEnabled(screen, capabilities)
 
             NavigationRailItem(
                 selected = currentScreen == screen,
@@ -57,6 +51,15 @@ fun Sidebar(
 
         Spacer(Modifier.weight(1f))
     }
+}
+
+private fun isScreenEnabled(screen: Screen, caps: Set<Capability>): Boolean = when (screen) {
+    Screen.ATTACH, Screen.AI, Screen.SETTINGS -> true
+    Screen.CLASS_BROWSER, Screen.HIERARCHY,
+    Screen.INSPECTOR, Screen.STRINGS -> Capability.STATIC_ANALYSIS in caps
+    Screen.TRACE -> Capability.LIVE_TRACE in caps
+    Screen.HEAP -> Capability.LIVE_HEAP in caps
+    Screen.DEBUGGER -> Capability.LIVE_DEBUG in caps
 }
 
 /**

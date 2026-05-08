@@ -1,5 +1,7 @@
 package com.bugdigger.bytesight.ui.navigation
 
+import com.bugdigger.bytesight.source.Capability
+
 /**
  * Represents the different screens/destinations in the application.
  */
@@ -23,6 +25,8 @@ data class NavigationState(
     val currentScreen: Screen = Screen.ATTACH,
     val isConnected: Boolean = false,
     val connectionKey: String? = null,
+    /** Capabilities of the active source. Empty when no source is installed. */
+    val capabilities: Set<Capability> = emptySet(),
     /** When non-null, the Inspector screen should auto-select this class and clear the field. */
     val pendingInspectorClass: String? = null,
     /**

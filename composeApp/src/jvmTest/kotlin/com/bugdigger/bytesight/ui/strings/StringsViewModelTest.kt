@@ -1,10 +1,9 @@
 package com.bugdigger.bytesight.ui.strings
 
-import com.bugdigger.bytesight.service.AgentClient
+import com.bugdigger.bytesight.service.ConnectionRegistry
 import com.bugdigger.bytesight.service.RenameStore
 import com.bugdigger.core.analysis.ConstantType
 import com.bugdigger.core.analysis.StringPattern
-import io.mockk.mockk
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -20,12 +19,12 @@ import kotlin.test.assertTrue
 class StringsViewModelTest {
 
     private lateinit var viewModel: StringsViewModel
-    private lateinit var mockAgentClient: AgentClient
+    private lateinit var connectionRegistry: ConnectionRegistry
 
     @BeforeEach
     fun setup() {
-        mockAgentClient = mockk(relaxed = true)
-        viewModel = StringsViewModel(mockAgentClient, RenameStore())
+        connectionRegistry = ConnectionRegistry()
+        viewModel = StringsViewModel(connectionRegistry, RenameStore())
     }
 
     @Nested

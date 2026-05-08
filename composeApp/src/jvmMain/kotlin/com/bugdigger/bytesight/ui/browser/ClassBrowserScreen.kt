@@ -6,7 +6,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -19,20 +18,16 @@ import com.bugdigger.bytesight.ui.components.CodeViewer
 import com.bugdigger.protocol.ClassInfo
 
 /**
- * Screen for browsing classes loaded in the target JVM.
+ * Screen for browsing classes from the active [com.bugdigger.bytesight.source.ClassSource].
+ * The VM observes the registry directly, so this composable doesn't need a key.
  */
 @Composable
 fun ClassBrowserScreen(
     viewModel: ClassBrowserViewModel,
-    connectionKey: String,
     onAskAI: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
-    LaunchedEffect(connectionKey) {
-        viewModel.setConnectionKey(connectionKey)
-    }
 
     Column(
         modifier = modifier

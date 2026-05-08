@@ -2,11 +2,12 @@ package com.bugdigger.bytesight.ui.inspector
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.bugdigger.bytesight.service.AgentClient
 import com.bugdigger.bytesight.service.CommentStore
+import com.bugdigger.bytesight.service.ConnectionRegistry
 import com.bugdigger.bytesight.service.MethodComments
 import com.bugdigger.bytesight.service.MethodKey
 import com.bugdigger.bytesight.service.RenameStore
+import com.bugdigger.bytesight.source.ClassSource
 import com.bugdigger.bytesight.ui.components.GraphLayout
 import com.bugdigger.bytesight.ui.components.SugiyamaLayout
 import com.bugdigger.core.analysis.BasicBlock
@@ -62,7 +63,7 @@ data class InspectorUiState(
 )
 
 class InspectorViewModel(
-    private val agentClient: AgentClient,
+    private val connectionRegistry: ConnectionRegistry,
     private val decompiler: Decompiler,
     private val commentStore: CommentStore,
     private val renameStore: RenameStore,
@@ -74,7 +75,7 @@ class InspectorViewModel(
     private val disassembler = BytecodeDisassembler()
     private val cfgBuilder = CfgBuilder()
     private val layoutEngine = SugiyamaLayout()
-    private var connectionKey: String? = null
+    private var activeSource: ClassSource? = null
     private var cachedBytecode: ByteArray? = null
     private var screenDensity: Float = 1f
 
@@ -95,7 +96,7 @@ class InspectorViewModel(
 
         // Mirror rename store into uiState and re-apply renames to decompiled source.
         viewModelScope.launch {
-            renameStore.renameMap.collect { renames ->
+            renameStore.renameMap.collect { _ ->
                 val current = _innerState.value
                 val shortNames = renameStore.shortNameMap()
                 val displaySource = current.decompiledSource?.let { renameStore.applyToSource(it) }
@@ -107,18 +108,21 @@ class InspectorViewModel(
                 }
             }
         }
-    }
 
-    fun setConnectionKey(key: String) {
-        if (connectionKey != key) {
-            connectionKey = key
-            // The previous attach's class list and any drilled-into selection
-            // are meaningless against a new JVM. Reset, but keep the user's
-            // view-mode preference (LINEAR vs CFG).
-            val prev = _innerState.value
-            _innerState.value = InspectorUiState(viewMode = prev.viewMode)
-            cachedBytecode = null
-            loadClasses()
+        // React to active-source changes — replaces the old setConnectionKey path.
+        viewModelScope.launch {
+            connectionRegistry.classSource.collect { source ->
+                if (activeSource !== source) {
+                    activeSource = source
+                    // The previous source's class list and any drilled-into selection
+                    // are meaningless against a new source. Reset, but keep the user's
+                    // view-mode preference (LINEAR vs CFG).
+                    val prev = _innerState.value
+                    _innerState.value = InspectorUiState(viewMode = prev.viewMode)
+                    cachedBytecode = null
+                    if (source != null) loadClasses()
+                }
+            }
         }
     }
 
@@ -130,28 +134,27 @@ class InspectorViewModel(
     }
 
     private fun loadClasses() {
-        val key = connectionKey ?: return
+        val source = activeSource ?: return
         viewModelScope.launch {
             _innerState.update { it.copy(isLoadingClasses = true, error = null) }
 
-            agentClient.listClasses(
-                connectionKey = key,
-                includeSystemClasses = false,
-            ).onSuccess { classes ->
-                _innerState.update { it.copy(classes = classes, isLoadingClasses = false) }
-            }.onFailure { e ->
-                _innerState.update {
-                    it.copy(
-                        isLoadingClasses = false,
-                        error = "Failed to load classes: ${e.message}",
-                    )
+            source.listClasses(includeSystemClasses = false)
+                .onSuccess { classes ->
+                    _innerState.update { it.copy(classes = classes, isLoadingClasses = false) }
                 }
-            }
+                .onFailure { e ->
+                    _innerState.update {
+                        it.copy(
+                            isLoadingClasses = false,
+                            error = "Failed to load classes: ${e.message}",
+                        )
+                    }
+                }
         }
     }
 
     fun selectClass(className: String) {
-        val key = connectionKey ?: return
+        val classSource = activeSource ?: return
 
         _innerState.update {
             it.copy(
@@ -172,15 +175,14 @@ class InspectorViewModel(
         }
 
         viewModelScope.launch {
-            agentClient.getClassBytecode(key, className)
-                .onSuccess { response ->
-                    val bytecode = response.bytecode.toByteArray()
+            classSource.getBytecode(className)
+                .onSuccess { bytecode ->
                     cachedBytecode = bytecode
 
                     val disassembled = runCatching { disassembler.disassemble(bytecode) }.getOrNull()
 
                     val decompResult = decompiler.decompile(className, bytecode)
-                    val source = when (decompResult) {
+                    val sourceText = when (decompResult) {
                         is DecompilationResult.Success -> decompResult.sourceCode
                         is DecompilationResult.Failure -> "// Decompilation failed: ${decompResult.error}"
                     }
@@ -194,8 +196,8 @@ class InspectorViewModel(
                     _innerState.update {
                         it.copy(
                             disassembledClass = disassembled,
-                            decompiledSource = source,
-                            displaySource = renameStore.applyToSource(source),
+                            decompiledSource = sourceText,
+                            displaySource = renameStore.applyToSource(sourceText),
                             decompiledLineMap = lineMap,
                             renamedSymbols = renameStore.shortNameMap(),
                             selectedMethod = firstMethod,

@@ -1,7 +1,7 @@
 package com.bugdigger.bytesight.ui.inspector
 
-import com.bugdigger.bytesight.service.AgentClient
 import com.bugdigger.bytesight.service.CommentStore
+import com.bugdigger.bytesight.service.ConnectionRegistry
 import com.bugdigger.bytesight.service.RenameStore
 import com.bugdigger.core.analysis.BasicBlock
 import com.bugdigger.core.analysis.BlockType
@@ -25,18 +25,18 @@ import kotlin.test.assertTrue
 class InspectorViewModelTest {
 
     private lateinit var viewModel: InspectorViewModel
-    private lateinit var mockAgentClient: AgentClient
+    private lateinit var connectionRegistry: ConnectionRegistry
     private lateinit var mockDecompiler: Decompiler
     private lateinit var commentStore: CommentStore
     private lateinit var renameStore: RenameStore
 
     @BeforeEach
     fun setup() {
-        mockAgentClient = mockk(relaxed = true)
+        connectionRegistry = ConnectionRegistry()
         mockDecompiler = mockk(relaxed = true)
         commentStore = CommentStore()
         renameStore = RenameStore()
-        viewModel = InspectorViewModel(mockAgentClient, mockDecompiler, commentStore, renameStore)
+        viewModel = InspectorViewModel(connectionRegistry, mockDecompiler, commentStore, renameStore)
     }
 
     @Nested

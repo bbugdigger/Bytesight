@@ -2,8 +2,9 @@ package com.bugdigger.bytesight.ui.strings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.bugdigger.bytesight.service.AgentClient
+import com.bugdigger.bytesight.service.ConnectionRegistry
 import com.bugdigger.bytesight.service.RenameStore
+import com.bugdigger.bytesight.source.ClassSource
 import com.bugdigger.core.analysis.ConstantExtractor
 import com.bugdigger.core.analysis.ConstantType
 import com.bugdigger.core.analysis.ExtractedConstant
@@ -34,10 +35,11 @@ data class StringsUiState(
 
 /**
  * ViewModel for the String/Constant Extraction screen.
- * Scans loaded classes for hardcoded strings, numeric constants, and other literals.
+ * Scans the active source's classes for hardcoded strings, numeric
+ * constants, and other literals.
  */
 class StringsViewModel(
-    private val agentClient: AgentClient,
+    private val connectionRegistry: ConnectionRegistry,
     private val renameStore: RenameStore,
 ) : ViewModel() {
 
@@ -45,7 +47,7 @@ class StringsViewModel(
     val uiState: StateFlow<StringsUiState> = _uiState.asStateFlow()
 
     private val extractor = ConstantExtractor()
-    private var connectionKey: String? = null
+    private var activeSource: ClassSource? = null
 
     init {
         viewModelScope.launch {
@@ -53,30 +55,26 @@ class StringsViewModel(
                 _uiState.update { it.copy(renames = renameStore.shortNameMap()) }
             }
         }
-    }
-
-    /**
-     * Sets the connection key for agent communication. On a key change, clears
-     * the previous attach's extracted constants while preserving filter
-     * preferences (typeFilter, patternFilter).
-     */
-    fun setConnectionKey(key: String) {
-        if (connectionKey != key) {
-            connectionKey = key
-            val prev = _uiState.value
-            _uiState.value = StringsUiState(
-                typeFilter = prev.typeFilter,
-                patternFilter = prev.patternFilter,
-                renames = prev.renames,
-            )
+        viewModelScope.launch {
+            connectionRegistry.classSource.collect { source ->
+                if (activeSource !== source) {
+                    activeSource = source
+                    val prev = _uiState.value
+                    _uiState.value = StringsUiState(
+                        typeFilter = prev.typeFilter,
+                        patternFilter = prev.patternFilter,
+                        renames = prev.renames,
+                    )
+                }
+            }
         }
     }
 
     /**
-     * Extracts constants from all loaded classes.
+     * Extracts constants from all classes the active source knows about.
      */
     fun extractAll() {
-        val key = connectionKey ?: return
+        val source = activeSource ?: return
 
         viewModelScope.launch {
             _uiState.update {
@@ -90,65 +88,63 @@ class StringsViewModel(
                 )
             }
 
-            agentClient.listClasses(
-                connectionKey = key,
-                includeSystemClasses = false,
-            ).onSuccess { classes ->
-                _uiState.update { it.copy(totalClasses = classes.size) }
+            source.listClasses(includeSystemClasses = false)
+                .onSuccess { classes ->
+                    _uiState.update { it.copy(totalClasses = classes.size) }
 
-                val allConstants = mutableListOf<ExtractedConstant>()
-                var processed = 0
+                    val allConstants = mutableListOf<ExtractedConstant>()
+                    var processed = 0
 
-                for (classInfo in classes) {
-                    agentClient.getClassBytecode(key, classInfo.name)
-                        .onSuccess { response ->
-                            val bytecode = response.bytecode.toByteArray()
-                            if (bytecode.isNotEmpty()) {
-                                runCatching {
-                                    allConstants.addAll(extractor.extract(bytecode))
+                    for (classInfo in classes) {
+                        source.getBytecode(classInfo.name)
+                            .onSuccess { bytecode ->
+                                if (bytecode.isNotEmpty()) {
+                                    runCatching {
+                                        allConstants.addAll(extractor.extract(bytecode))
+                                    }
                                 }
                             }
-                        }
 
-                    processed++
-                    if (processed % 10 == 0 || processed == classes.size) {
-                        _uiState.update {
-                            it.copy(
-                                processedClasses = processed,
-                                progress = processed.toFloat() / classes.size,
-                                constants = allConstants.toList(),
-                                filteredConstants = applyFilters(
-                                    allConstants,
-                                    it.searchQuery,
-                                    it.typeFilter,
-                                    it.patternFilter,
-                                ),
-                            )
+                        processed++
+                        if (processed % 10 == 0 || processed == classes.size) {
+                            _uiState.update {
+                                it.copy(
+                                    processedClasses = processed,
+                                    progress = processed.toFloat() / classes.size,
+                                    constants = allConstants.toList(),
+                                    filteredConstants = applyFilters(
+                                        allConstants,
+                                        it.searchQuery,
+                                        it.typeFilter,
+                                        it.patternFilter,
+                                    ),
+                                )
+                            }
                         }
                     }
-                }
 
-                _uiState.update {
-                    it.copy(
-                        isExtracting = false,
-                        progress = 1f,
-                        constants = allConstants.toList(),
-                        filteredConstants = applyFilters(
-                            allConstants,
-                            it.searchQuery,
-                            it.typeFilter,
-                            it.patternFilter,
-                        ),
-                    )
+                    _uiState.update {
+                        it.copy(
+                            isExtracting = false,
+                            progress = 1f,
+                            constants = allConstants.toList(),
+                            filteredConstants = applyFilters(
+                                allConstants,
+                                it.searchQuery,
+                                it.typeFilter,
+                                it.patternFilter,
+                            ),
+                        )
+                    }
                 }
-            }.onFailure { e ->
-                _uiState.update {
-                    it.copy(
-                        isExtracting = false,
-                        error = "Failed to list classes: ${e.message}",
-                    )
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            isExtracting = false,
+                            error = "Failed to list classes: ${e.message}",
+                        )
+                    }
                 }
-            }
         }
     }
 
