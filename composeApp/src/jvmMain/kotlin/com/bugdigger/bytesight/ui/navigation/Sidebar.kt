@@ -54,7 +54,10 @@ fun Sidebar(
 }
 
 private fun isScreenEnabled(screen: Screen, caps: Set<Capability>): Boolean = when (screen) {
-    Screen.ATTACH, Screen.AI, Screen.SETTINGS -> true
+    // Always-on entries: Attach (start a session), AI (source-agnostic),
+    // Settings (config), and Diff (loads its own files internally — no
+    // active source required).
+    Screen.ATTACH, Screen.AI, Screen.SETTINGS, Screen.BYTECODE_DIFF -> true
     Screen.CLASS_BROWSER, Screen.HIERARCHY,
     Screen.INSPECTOR, Screen.STRINGS -> Capability.STATIC_ANALYSIS in caps
     Screen.TRACE -> Capability.LIVE_TRACE in caps

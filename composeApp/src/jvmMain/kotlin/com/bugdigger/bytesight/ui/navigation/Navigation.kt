@@ -14,6 +14,7 @@ enum class Screen(val title: String, val icon: String) {
     TRACE("Trace", "📊"),
     HEAP("Heap", "💾"),
     DEBUGGER("Debugger", "🐞"),
+    BYTECODE_DIFF("Diff", "🔀"),
     AI("AI", "✨"),
     SETTINGS("Settings", "⚙"),
 }

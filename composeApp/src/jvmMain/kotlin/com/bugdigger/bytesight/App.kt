@@ -24,6 +24,8 @@ import com.bugdigger.bytesight.ui.browser.ClassBrowserScreen
 import com.bugdigger.bytesight.ui.browser.ClassBrowserViewModel
 import com.bugdigger.bytesight.ui.debugger.DebuggerScreen
 import com.bugdigger.bytesight.ui.debugger.DebuggerViewModel
+import com.bugdigger.bytesight.ui.diff.BytecodeDiffScreen
+import com.bugdigger.bytesight.ui.diff.BytecodeDiffViewModel
 import com.bugdigger.bytesight.ui.heap.HeapScreen
 import com.bugdigger.bytesight.ui.heap.HeapViewModel
 import com.bugdigger.bytesight.ui.hierarchy.HierarchyScreen
@@ -274,6 +276,14 @@ private fun MainContent(
                     modifier = modifier,
                 )
             }
+        }
+
+        Screen.BYTECODE_DIFF -> {
+            val viewModel: BytecodeDiffViewModel = koinInject()
+            BytecodeDiffScreen(
+                viewModel = viewModel,
+                modifier = modifier,
+            )
         }
 
         Screen.AI -> {

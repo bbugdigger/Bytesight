@@ -19,6 +19,7 @@ import com.bugdigger.bytesight.ui.ai.AIViewModel
 import com.bugdigger.bytesight.ui.attach.AttachViewModel
 import com.bugdigger.bytesight.ui.browser.ClassBrowserViewModel
 import com.bugdigger.bytesight.ui.debugger.DebuggerViewModel
+import com.bugdigger.bytesight.ui.diff.BytecodeDiffViewModel
 import com.bugdigger.bytesight.ui.heap.HeapViewModel
 import com.bugdigger.bytesight.ui.hierarchy.HierarchyViewModel
 import com.bugdigger.bytesight.ui.inspector.InspectorViewModel
@@ -29,6 +30,7 @@ import com.bugdigger.core.analysis.StaticHierarchyExtractor
 import com.bugdigger.core.decompiler.Decompiler
 import com.bugdigger.core.decompiler.DecompilerOptions
 import com.bugdigger.core.decompiler.VineflowerDecompiler
+import com.bugdigger.core.diff.ProjectDiffer
 import com.bugdigger.core.source.JarReader
 import kotlinx.serialization.json.Json
 import org.koin.core.module.dsl.factoryOf
@@ -106,4 +108,8 @@ val appModule = module {
     singleOf(::HeapViewModel)
     singleOf(::DebuggerViewModel)
     singleOf(::AIViewModel)
+
+    // BytecodeDiff (Step 4) — self-contained tab; loads its own files.
+    single { ProjectDiffer() }
+    singleOf(::BytecodeDiffViewModel)
 }
