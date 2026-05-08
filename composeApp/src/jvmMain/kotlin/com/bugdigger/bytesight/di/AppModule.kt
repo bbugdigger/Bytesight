@@ -23,9 +23,11 @@ import com.bugdigger.bytesight.ui.inspector.InspectorViewModel
 import com.bugdigger.bytesight.ui.settings.SettingsViewModel
 import com.bugdigger.bytesight.ui.strings.StringsViewModel
 import com.bugdigger.bytesight.ui.trace.TraceViewModel
+import com.bugdigger.core.analysis.StaticHierarchyExtractor
 import com.bugdigger.core.decompiler.Decompiler
 import com.bugdigger.core.decompiler.DecompilerOptions
 import com.bugdigger.core.decompiler.VineflowerDecompiler
+import com.bugdigger.core.source.JarReader
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
@@ -55,6 +57,11 @@ val appModule = module {
     // Decompiler configuration
     single { DecompilerOptions() }
     single<Decompiler> { VineflowerDecompiler(get()) }
+
+    // Static-source primitives. Used by JarClassSource today; future
+    // ApkClassSource and BtsProjectClassSource will reuse these singletons.
+    single { JarReader() }
+    single { StaticHierarchyExtractor() }
 
     // AI agent services (wires BytesightAgentServices to real services)
     single<BytesightAgentServices> { BytesightAgentServicesImpl(get(), get(), get(), get()) }

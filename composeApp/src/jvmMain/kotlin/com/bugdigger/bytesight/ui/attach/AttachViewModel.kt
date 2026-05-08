@@ -6,11 +6,17 @@ import com.bugdigger.bytesight.service.AgentClient
 import com.bugdigger.bytesight.service.AttachService
 import com.bugdigger.bytesight.service.ConnectionRegistry
 import com.bugdigger.bytesight.source.AgentClassSource
+import com.bugdigger.bytesight.source.JarClassSource
+import com.bugdigger.core.analysis.StaticHierarchyExtractor
+import com.bugdigger.core.source.JarReader
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * UI state for the Attach screen.
@@ -33,6 +39,8 @@ class AttachViewModel(
     private val attachService: AttachService,
     private val agentClient: AgentClient,
     private val connectionRegistry: ConnectionRegistry,
+    private val jarReader: JarReader,
+    private val hierarchyExtractor: StaticHierarchyExtractor,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AttachUiState())
@@ -127,14 +135,60 @@ class AttachViewModel(
     }
 
     /**
-     * Disconnects from the current agent.
+     * Opens a JAR file and installs it as the active static-only source.
+     *
+     * The connection key is set to a synthetic `jar://...` identifier so the
+     * existing `App.onConnected` callback fires (it routes to the Classes
+     * tab and treats any non-null key as "we have a session"). Runtime tabs
+     * stay disabled because [JarClassSource] only declares STATIC_ONLY.
+     */
+    fun openJar(path: String) {
+        val file = File(path)
+        viewModelScope.launch {
+            _uiState.update { it.copy(isAttaching = true, error = null) }
+
+            // JarClassSource reads + extracts metadata for every entry on
+            // construction — keep that off the main thread for big JARs.
+            val constructed = runCatching {
+                withContext(Dispatchers.IO) {
+                    JarClassSource(file, jarReader, hierarchyExtractor)
+                }
+            }
+
+            constructed
+                .onSuccess { source ->
+                    val key = "jar://${file.absolutePath}"
+                    connectionRegistry.setSource(source, connectionKey = null)
+                    _uiState.update {
+                        it.copy(
+                            isAttaching = false,
+                            connectionKey = key,
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            isAttaching = false,
+                            error = "Failed to open JAR: ${e.message}",
+                        )
+                    }
+                }
+        }
+    }
+
+    /**
+     * Disconnects from the current agent or static source.
      */
     fun disconnect() {
-        _uiState.value.connectionKey?.let { key ->
+        val key = _uiState.value.connectionKey ?: return
+        // Only disconnect the gRPC client when the active source actually came
+        // from a live agent. Static sources (jar://...) have no channel to close.
+        if (!key.startsWith("jar://") && !key.startsWith("apk://") && !key.startsWith("bts://")) {
             agentClient.disconnect(key)
-            connectionRegistry.setSource(null, null)
-            _uiState.update { it.copy(connectionKey = null) }
         }
+        connectionRegistry.setSource(null, null)
+        _uiState.update { it.copy(connectionKey = null) }
     }
 
     /**

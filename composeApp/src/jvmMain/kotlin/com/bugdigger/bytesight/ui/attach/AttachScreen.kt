@@ -13,6 +13,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.bugdigger.bytesight.service.AttachService
+import java.awt.FileDialog
+import java.awt.Frame
+import java.io.File
 
 /**
  * Screen for discovering and attaching to JVM processes.
@@ -39,6 +42,16 @@ fun AttachScreen(
         AttachHeader(
             isLoading = uiState.isLoading,
             onRefresh = viewModel::refreshProcesses,
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Static analysis entry point — open a JAR for static-only inspection.
+        // The Sidebar's capability gating disables Trace/Heap/Debugger when a
+        // JAR source is active, since JarClassSource declares STATIC_ONLY.
+        StaticOpenSection(
+            enabled = !uiState.isAttaching && uiState.connectionKey == null,
+            onJarPicked = viewModel::openJar,
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -79,6 +92,50 @@ fun AttachScreen(
             )
         }
     }
+}
+
+@Composable
+private fun StaticOpenSection(
+    enabled: Boolean,
+    onJarPicked: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+        ),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Static analysis (no agent)",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = "Open a JAR to browse classes, hierarchy, strings, and decompiled source. " +
+                    "Trace, Heap, and Debugger tabs are unavailable in this mode.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(
+                enabled = enabled,
+                onClick = { pickJarFile()?.let(onJarPicked) },
+            ) {
+                Text("Open JAR…")
+            }
+        }
+    }
+}
+
+private fun pickJarFile(): String? {
+    val dlg = FileDialog(null as Frame?, "Open JAR", FileDialog.LOAD)
+    dlg.file = "*.jar"
+    dlg.isVisible = true
+    val name = dlg.file ?: return null
+    val dir = dlg.directory ?: return null
+    return File(dir, name).absolutePath
 }
 
 @Composable

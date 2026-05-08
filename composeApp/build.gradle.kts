@@ -48,6 +48,10 @@ kotlin {
             implementation(libs.junit5.api)
             implementation(libs.mockk)
             implementation(libs.kotlinx.coroutines.test)
+            // ASM is needed for synthesizing tiny test JARs (JarClassSourceTest, etc.).
+            // core uses ASM with `implementation` scope so it doesn't leak transitively;
+            // pull it in explicitly here.
+            implementation(libs.asm)
             runtimeOnly(libs.junit5.engine)
         }
     }
