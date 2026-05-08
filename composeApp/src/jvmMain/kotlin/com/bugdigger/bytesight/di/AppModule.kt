@@ -13,6 +13,7 @@ import com.bugdigger.bytesight.service.BytesightAgentServicesImpl
 import com.bugdigger.bytesight.service.CommentStore
 import com.bugdigger.bytesight.service.ConnectionRegistry
 import com.bugdigger.bytesight.service.ProjectService
+import com.bugdigger.bytesight.service.ProjectSession
 import com.bugdigger.bytesight.service.RenameStore
 import com.bugdigger.bytesight.ui.ai.AIViewModel
 import com.bugdigger.bytesight.ui.attach.AttachViewModel
@@ -67,9 +68,11 @@ val appModule = module {
 
     // Project file persistence (.bts save/load).
     single { Json { prettyPrint = true; ignoreUnknownKeys = true } }
+    singleOf(::ProjectSession)
     single {
         ProjectService(
             connectionRegistry = get(),
+            projectSession = get(),
             renameStore = get(),
             commentStore = get(),
             debuggerState = get(),

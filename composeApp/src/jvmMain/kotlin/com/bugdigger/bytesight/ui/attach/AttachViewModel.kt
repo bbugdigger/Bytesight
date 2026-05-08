@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.bugdigger.bytesight.service.AgentClient
 import com.bugdigger.bytesight.service.AttachService
 import com.bugdigger.bytesight.service.ConnectionRegistry
+import com.bugdigger.bytesight.service.ProjectSession
 import com.bugdigger.bytesight.source.AgentClassSource
 import com.bugdigger.bytesight.source.JarClassSource
 import com.bugdigger.core.analysis.StaticHierarchyExtractor
@@ -39,6 +40,7 @@ class AttachViewModel(
     private val attachService: AttachService,
     private val agentClient: AgentClient,
     private val connectionRegistry: ConnectionRegistry,
+    private val projectSession: ProjectSession,
     private val jarReader: JarReader,
     private val hierarchyExtractor: StaticHierarchyExtractor,
 ) : ViewModel() {
@@ -106,6 +108,9 @@ class AttachViewModel(
                             // so VMs that read classSource pick it up immediately.
                             val source = AgentClassSource(agentClient, key)
                             connectionRegistry.setSource(source, connectionKey = key)
+                            // The header bar's "currentFile" no longer applies
+                            // — this is a fresh live attach, not a loaded .bts.
+                            projectSession.reset()
 
                             _uiState.update {
                                 it.copy(
@@ -159,6 +164,8 @@ class AttachViewModel(
                 .onSuccess { source ->
                     val key = "jar://${file.absolutePath}"
                     connectionRegistry.setSource(source, connectionKey = null)
+                    // Fresh JAR opens are not associated with a saved .bts.
+                    projectSession.reset()
                     _uiState.update {
                         it.copy(
                             isAttaching = false,
@@ -188,6 +195,7 @@ class AttachViewModel(
             agentClient.disconnect(key)
         }
         connectionRegistry.setSource(null, null)
+        projectSession.reset()
         _uiState.update { it.copy(connectionKey = null) }
     }
 

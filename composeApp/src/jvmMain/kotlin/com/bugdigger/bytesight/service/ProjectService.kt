@@ -26,6 +26,7 @@ import java.io.File
  */
 class ProjectService(
     private val connectionRegistry: ConnectionRegistry,
+    private val projectSession: ProjectSession,
     private val renameStore: RenameStore,
     private val commentStore: CommentStore,
     private val debuggerState: DebuggerState,
@@ -67,6 +68,7 @@ class ProjectService(
         )
 
         BtsProjectFile.write(destination, manifest, classes, jsonEntries, json)
+        projectSession.setCurrentFile(destination)
         logger.info("Saved project: $destination (${classes.size} classes)")
     }
 
@@ -100,6 +102,7 @@ class ProjectService(
         }
 
         connectionRegistry.setSource(source, connectionKey = null)
+        projectSession.setCurrentFile(file)
         logger.info("Loaded project: $file")
     }
 

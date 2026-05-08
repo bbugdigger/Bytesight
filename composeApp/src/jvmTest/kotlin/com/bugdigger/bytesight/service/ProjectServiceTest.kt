@@ -56,8 +56,9 @@ class ProjectServiceTest {
             connectionKey = "live",
         )
 
+        val session = ProjectSession()
         val service = ProjectService(
-            registry, rename, comment, debug,
+            registry, session, rename, comment, debug,
             StaticHierarchyExtractor(), json,
             bytesightVersion = "test",
         )
@@ -66,15 +67,20 @@ class ProjectServiceTest {
 
         // Act: save
         service.saveAs(out, displayName = "Test").getOrThrow()
+        // Save updates the session's currentFile so the header bar can
+        // light up "saved" state and reuse this path for subsequent Saves.
+        assertEquals(out, session.currentFile.value)
 
         // Wipe stores to simulate a fresh app start.
         rename.clearAll()
         comment.restore("[]", json)
         debug.setBreakpoints(emptyList())
         registry.setSource(null, null)
+        session.reset()
 
         // Act: load
         service.load(out).getOrThrow()
+        assertEquals(out, session.currentFile.value)
 
         // Assert: stores rehydrated
         assertEquals("Renamed", rename.renameMap.value["com.example.a"])
@@ -100,7 +106,7 @@ class ProjectServiceTest {
     @Test
     fun `saveAs fails when no active source`(@TempDir dir: Path) = runTest {
         val service = ProjectService(
-            ConnectionRegistry(), RenameStore(), CommentStore(), DebuggerState(),
+            ConnectionRegistry(), ProjectSession(), RenameStore(), CommentStore(), DebuggerState(),
             StaticHierarchyExtractor(), json, "test",
         )
         val out = dir.resolve("nope.bts").toFile()
