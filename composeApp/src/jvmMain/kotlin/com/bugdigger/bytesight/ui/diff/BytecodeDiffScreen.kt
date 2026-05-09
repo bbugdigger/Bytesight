@@ -265,9 +265,19 @@ private fun MatchRow(pair: MatchedPair, selected: Boolean, onClick: () -> Unit) 
                 color = confidenceColor(pair.confidence),
                 modifier = Modifier.width(48.dp),
             )
+            // Explicit `color` matters here. The parent Surface's `color`
+            // uses `surface.copy(alpha = 0f)` for the unselected state, which
+            // breaks Material3's contentColorFor lookup (alpha-modified color
+            // isn't in the scheme) — Text falls back to a default that renders
+            // black in this theme. Setting onSurface explicitly fixes it.
             Text(
                 text = "${pair.old.className.substringAfterLast('.')}.${pair.old.methodName}",
                 style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                color = if (selected) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
@@ -276,6 +286,11 @@ private fun MatchRow(pair: MatchedPair, selected: Boolean, onClick: () -> Unit) 
             Text(
                 text = "${pair.new.className.substringAfterLast('.')}.${pair.new.methodName}",
                 style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                color = if (selected) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
