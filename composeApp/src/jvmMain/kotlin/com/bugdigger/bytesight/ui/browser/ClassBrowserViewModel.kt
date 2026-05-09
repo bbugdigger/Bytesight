@@ -56,19 +56,24 @@ class ClassBrowserViewModel(
     private var activeSource: ClassSource? = null
 
     init {
-        // Re-apply renames whenever the rename map changes. Both the
-        // decompiled-source overlay AND the renamed list display depend
-        // on this — re-filter so the search box matches against the new
-        // display names too.
+        // Refresh display when renames change. Three things need to happen:
+        //   1. Update the renames map carried in state for list rendering.
+        //   2. Re-filter the class list (search now also matches against
+        //      renamed display names).
+        //   3. Re-decompile the currently selected class so its source view
+        //      reflects the latest renames. Renames are applied at the
+        //      bytecode layer by RenameAwareDecompiler, so we re-run the
+        //      decompiler against cached bytes — `applyToSource` (the old
+        //      text-substitution path) is gone.
         viewModelScope.launch {
             renameStore.renameMap.collect { renameMap ->
                 _uiState.update { state ->
                     state.copy(
                         renames = renameMap,
                         filteredClasses = filterClasses(state.classes, state.searchQuery, renameMap),
-                        displayDecompiled = state.decompiled?.let { renameStore.applyToSource(it) },
                     )
                 }
+                rerunDecompilationOnCurrentClass()
             }
         }
         // React to source changes — replaces the old setConnectionKey call site.
@@ -196,11 +201,15 @@ class ClassBrowserViewModel(
     private suspend fun decompileBytecode(className: String, bytecode: ByteArray) {
         when (val result = decompiler.decompile(className, bytecode)) {
             is DecompilationResult.Success -> {
+                // Renames are baked into `result.sourceCode` by
+                // RenameAwareDecompiler. `decompiled` and `displayDecompiled`
+                // hold identical content; we keep both fields for the
+                // existing screen API surface.
                 _uiState.update {
                     it.copy(
                         isLoadingBytecode = false,
                         decompiled = result.sourceCode,
-                        displayDecompiled = renameStore.applyToSource(result.sourceCode),
+                        displayDecompiled = result.sourceCode,
                         decompilationWarnings = result.warnings,
                     )
                 }
@@ -230,6 +239,17 @@ class ClassBrowserViewModel(
      */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    /**
+     * Re-decompile the currently-selected class. Used by the rename
+     * observer so the source view reflects the latest renames (the
+     * decompiler's RenameAware wrapper applies them at the bytecode layer).
+     */
+    private fun rerunDecompilationOnCurrentClass() {
+        val className = _uiState.value.selectedClass?.name ?: return
+        val bytecode = _uiState.value.bytecode ?: return
+        viewModelScope.launch { decompileBytecode(className, bytecode) }
     }
 
     /**

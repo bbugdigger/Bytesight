@@ -70,6 +70,7 @@ bytebuddy-agent = { module = "net.bytebuddy:byte-buddy-agent", version.ref = "by
 # Bytecode Analysis
 asm = { module = "org.ow2.asm:asm", version.ref = "asm" }
 asm-util = { module = "org.ow2.asm:asm-util", version.ref = "asm" }
+asm-commons = { module = "org.ow2.asm:asm-commons", version.ref = "asm" }
 
 # Decompilation
 vineflower = { module = "org.vineflower:vineflower", version.ref = "vineflower" }

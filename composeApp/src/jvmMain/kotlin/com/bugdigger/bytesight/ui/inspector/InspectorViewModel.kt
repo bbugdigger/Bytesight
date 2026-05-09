@@ -31,6 +31,37 @@ import kotlinx.coroutines.launch
 enum class ViewMode { LINEAR, CFG }
 
 /**
+ * A symbol the user might be trying to rename when their click on the
+ * decompiled source is ambiguous. Each variant carries enough information
+ * to construct a precise [RenameStore] key.
+ */
+sealed interface RenameCandidate {
+    data class ClassRef(val classFqn: String) : RenameCandidate
+    data class Field(
+        val classFqn: String,
+        val name: String,
+        val descriptor: String,
+    ) : RenameCandidate
+
+    data class Method(
+        val classFqn: String,
+        val name: String,
+        val descriptor: String,
+    ) : RenameCandidate
+}
+
+/**
+ * Captured rename request awaiting disambiguation. Set on
+ * [InspectorUiState.pendingRename] when the user's short-name click maps
+ * to more than one symbol; cleared when they pick or cancel.
+ */
+data class PendingRename(
+    val shortName: String,
+    val newName: String,
+    val candidates: List<RenameCandidate>,
+)
+
+/**
  * UI state for the Bytecode Inspector screen, which can render bytecode either as
  * a linear list (default) or as a control flow graph (TAB to toggle).
  */
@@ -57,6 +88,14 @@ data class InspectorUiState(
      * sees their renamed classes there instead of `o.j` etc.
      */
     val classRenames: Map<String, String> = emptyMap(),
+    /**
+     * Set when the user requested a rename of a simple name that has more
+     * than one matching symbol in the current class (e.g. two fields named
+     * `a` of different types, or a field named `a` plus a method named `a`).
+     * The screen renders [com.bugdigger.bytesight.ui.components.RenameDisambiguationDialog]
+     * when non-null.
+     */
+    val pendingRename: PendingRename? = null,
     val viewMode: ViewMode = ViewMode.LINEAR,
     val cfg: ControlFlowGraph? = null,
     val graphLayout: GraphLayout<BasicBlock, CfgEdge>? = null,
@@ -100,19 +139,25 @@ class InspectorViewModel(
             }
         }
 
-        // Mirror rename store into uiState and re-apply renames to decompiled source.
+        // Mirror rename store into uiState. Renames are now applied at the
+        // bytecode layer by [RenameAwareDecompiler]; the source-layer text
+        // substitution that used to live here (`applyToSource`) is gone
+        // because it couldn't disambiguate same-named symbols. Instead,
+        // when the rename map changes we re-decompile the currently
+        // selected class so its source reflects the latest renames.
         viewModelScope.launch {
             renameStore.renameMap.collect { renameMap ->
-                val current = _innerState.value
-                val shortNames = renameStore.shortNameMap()
-                val displaySource = current.decompiledSource?.let { renameStore.applyToSource(it) }
                 _innerState.update {
                     it.copy(
-                        displaySource = displaySource,
-                        renamedSymbols = shortNames,
+                        renamedSymbols = renameStore.shortNameMap(),
                         classRenames = renameMap,
                     )
                 }
+                // Re-run decompilation against the cached bytes if we're
+                // currently viewing a class. The cached bytecode is the raw
+                // bytecode from the agent / source; the decompiler applies
+                // the new renames on top.
+                rerunDecompilationOnCurrentClass()
             }
         }
 
@@ -200,11 +245,16 @@ class InspectorViewModel(
                         commentStore.commentsFor(MethodKey(className, firstMethod.name, firstMethod.descriptor))
                     } else MethodComments()
 
+                    // Renames are now baked into `sourceText` by
+                    // RenameAwareDecompiler. `displaySource` and
+                    // `decompiledSource` carry identical content; we keep
+                    // `displaySource` only for the existing API surface
+                    // expected by InspectorScreen.
                     _innerState.update {
                         it.copy(
                             disassembledClass = disassembled,
                             decompiledSource = sourceText,
-                            displaySource = renameStore.applyToSource(sourceText),
+                            displaySource = sourceText,
                             decompiledLineMap = lineMap,
                             renamedSymbols = renameStore.shortNameMap(),
                             selectedMethod = firstMethod,
@@ -368,21 +418,102 @@ class InspectorViewModel(
     }
 
     /**
-     * Rename a symbol identified by its short name as it appears in the decompiled source.
-     * Builds a fully-qualified name using the current class context and registers
-     * the rename in the [RenameStore].
+     * Begin a rename for the symbol that appears as [shortName] in the
+     * decompiled source. We can't tell from the short name alone which
+     * symbol the user means (in obfuscated code, `a` could simultaneously
+     * be the class, a field, multiple overloaded methods, or all of the
+     * above), so this method:
+     *
+     *   - Finds every candidate (class / fields / methods) in the current
+     *     class with matching short name.
+     *   - If exactly one candidate exists, applies the rename immediately
+     *     using its precise key (descriptor included for fields & methods).
+     *   - If multiple, parks the request in [InspectorUiState.pendingRename]
+     *     so the screen can show a disambiguation picker; the user picks,
+     *     then we apply via [resolveRenameAs].
+     *   - If none, falls back to the legacy descriptor-less key shape so
+     *     types of symbols we don't track here (locals, etc.) still get
+     *     stored. They won't take effect at the bytecode layer but won't
+     *     break anything either.
      */
     fun renameSymbol(shortName: String, newName: String) {
-        val className = _innerState.value.selectedClassName ?: return
-        // Heuristic: if the short name matches the class simple name, rename the class.
-        // Otherwise assume it's a method/field of the current class.
-        val classSimpleName = className.substringAfterLast('.')
-        val fqn = if (shortName == classSimpleName) {
-            className
-        } else {
-            "$className#$shortName"
+        val candidates = findRenameCandidates(shortName)
+        when (candidates.size) {
+            0 -> {
+                // Legacy fallback for symbols we can't precisely identify.
+                val className = _innerState.value.selectedClassName ?: return
+                renameStore.rename("$className#$shortName", newName)
+            }
+            1 -> applyResolvedRename(candidates.single(), newName)
+            else -> _innerState.update {
+                it.copy(pendingRename = PendingRename(shortName, newName, candidates))
+            }
         }
-        renameStore.rename(fqn, newName)
+    }
+
+    /** Apply the rename the user picked from the disambiguation dialog. */
+    fun resolveRenameAs(candidate: RenameCandidate) {
+        val pending = _innerState.value.pendingRename ?: return
+        applyResolvedRename(candidate, pending.newName)
+        _innerState.update { it.copy(pendingRename = null) }
+    }
+
+    /** User dismissed the disambiguation dialog without picking. */
+    fun cancelPendingRename() {
+        _innerState.update { it.copy(pendingRename = null) }
+    }
+
+    private fun applyResolvedRename(candidate: RenameCandidate, newName: String) {
+        val key = when (candidate) {
+            is RenameCandidate.ClassRef -> candidate.classFqn
+            is RenameCandidate.Field ->
+                RenameStore.fieldKey(candidate.classFqn, candidate.name, candidate.descriptor)
+            is RenameCandidate.Method ->
+                RenameStore.methodKey(candidate.classFqn, candidate.name, candidate.descriptor)
+        }
+        renameStore.rename(key, newName)
+    }
+
+    private fun findRenameCandidates(shortName: String): List<RenameCandidate> {
+        val state = _innerState.value
+        val className = state.selectedClassName ?: return emptyList()
+        val candidates = mutableListOf<RenameCandidate>()
+        if (shortName == className.substringAfterLast('.')) {
+            candidates += RenameCandidate.ClassRef(className)
+        }
+        state.disassembledClass?.let { dc ->
+            dc.fields.filter { it.name == shortName }.forEach { f ->
+                candidates += RenameCandidate.Field(className, f.name, f.descriptor)
+            }
+            dc.methods.filter { it.name == shortName }.forEach { m ->
+                candidates += RenameCandidate.Method(className, m.name, m.descriptor)
+            }
+        }
+        return candidates
+    }
+
+    /**
+     * Re-run decompilation against the cached bytecode. Called when renames
+     * change so the view picks up the latest substitutions.
+     */
+    private fun rerunDecompilationOnCurrentClass() {
+        val className = _innerState.value.selectedClassName ?: return
+        val bytecode = cachedBytecode ?: return
+        viewModelScope.launch {
+            val decompResult = decompiler.decompile(className, bytecode)
+            val sourceText = when (decompResult) {
+                is DecompilationResult.Success -> decompResult.sourceCode
+                is DecompilationResult.Failure -> "// Decompilation failed: ${decompResult.error}"
+            }
+            val lineMap = (decompResult as? DecompilationResult.Success)?.lineMap
+            _innerState.update {
+                it.copy(
+                    decompiledSource = sourceText,
+                    displaySource = sourceText,
+                    decompiledLineMap = lineMap,
+                )
+            }
+        }
     }
 
     fun clearError() {

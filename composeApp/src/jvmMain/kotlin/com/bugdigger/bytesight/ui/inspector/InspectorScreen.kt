@@ -323,6 +323,16 @@ fun InspectorScreen(
             onDismiss = { showCommentDialog = false },
         )
     }
+
+    // Show the disambiguation picker when the user's last rename mapped
+    // to multiple symbols in the current class.
+    uiState.pendingRename?.let { pending ->
+        com.bugdigger.bytesight.ui.components.RenameDisambiguationDialog(
+            pending = pending,
+            onPick = viewModel::resolveRenameAs,
+            onDismiss = viewModel::cancelPendingRename,
+        )
+    }
 }
 
 @Composable

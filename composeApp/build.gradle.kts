@@ -44,6 +44,12 @@ kotlin {
             // Project file persistence
             implementation(libs.kotlinx.serialization.json)
 
+            // ASM — needed at runtime for bytecode-level renaming via ClassRemapper
+            // (see service/RenameRemapper.kt). asm-commons provides Remapper +
+            // ClassRemapper; asm is the core API.
+            implementation(libs.asm)
+            implementation(libs.asm.commons)
+
             // Logging
             implementation(libs.slf4j.api)
             implementation(libs.logback.classic)

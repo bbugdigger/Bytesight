@@ -14,6 +14,7 @@ import com.bugdigger.bytesight.service.CommentStore
 import com.bugdigger.bytesight.service.ConnectionRegistry
 import com.bugdigger.bytesight.service.ProjectService
 import com.bugdigger.bytesight.service.ProjectSession
+import com.bugdigger.bytesight.service.RenameAwareDecompiler
 import com.bugdigger.bytesight.service.RenameStore
 import com.bugdigger.bytesight.ui.ai.AIViewModel
 import com.bugdigger.bytesight.ui.attach.AttachViewModel
@@ -59,9 +60,17 @@ val appModule = module {
     // live + replay cursors based on CursorMode.
     single<ExecutionCursor> { get<LiveCursor>() }
 
-    // Decompiler configuration
+    // Decompiler configuration. RenameAwareDecompiler wraps Vineflower so
+    // that the user's symbol renames are applied at the bytecode layer
+    // (via ASM ClassRemapper) before decompilation runs — see
+    // [RenameAwareDecompiler] for why this is the right layer.
     single { DecompilerOptions() }
-    single<Decompiler> { VineflowerDecompiler(get()) }
+    single<Decompiler> {
+        RenameAwareDecompiler(
+            delegate = VineflowerDecompiler(get()),
+            renameStore = get(),
+        )
+    }
 
     // Static-source primitives. Used by JarClassSource today; future
     // ApkClassSource and BtsProjectClassSource will reuse these singletons.

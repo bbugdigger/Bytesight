@@ -12,13 +12,22 @@ import kotlinx.serialization.json.Json
  * Session-scoped in-memory store for user-assigned symbol renames. Singleton so that
  * renames survive ViewModel recreation when the user navigates between screens.
  *
- * Keys use fully-qualified identifiers:
+ * Keys use fully-qualified identifiers, all containing enough type context
+ * to disambiguate same-named symbols within a class:
  * - Classes: `"com.example.ClassName"`
- * - Methods: `"com.example.ClassName#methodName(Ljava/lang/String;)V"`
- * - Fields: `"com.example.ClassName#fieldName"`
+ * - Methods: `"com.example.ClassName#methodName(Ljava/lang/String;)V"` — descriptor inline.
+ * - Fields:  `"com.example.ClassName#fieldName:Ljava/util/Map;"` — descriptor after `:`.
+ *   This shape is required because the JVM allows multiple fields with the
+ *   same name and different types in the same class; obfuscators exploit it.
  *
- * The [applyToSource] method performs simple text replacement of short names (the part
- * after the last `.` or `#`) in decompiled source code.
+ * For backward compatibility, renames written with the old descriptor-less
+ * field key (`"com.example.ClassName#fieldName"`) still apply via fallback
+ * lookup in [RenameRemapper], but new code should use [fieldKey] to
+ * construct precise keys.
+ *
+ * Renames are applied at the **bytecode layer** by [RenameAwareDecompiler]
+ * before Vineflower runs, so the decompiled source comes out correctly
+ * disambiguated even when multiple symbols share a simple name.
  */
 class RenameStore {
 
@@ -123,6 +132,21 @@ class RenameStore {
             val simple = displayShortName(classFqn, renames)
             return if (pkg.isEmpty()) simple else "$pkg.$simple"
         }
+
+        /**
+         * Builds the precise rename key for a field. Includes the field's
+         * JVM descriptor so two fields with the same name and different
+         * types in the same class don't collide.
+         */
+        fun fieldKey(classFqn: String, fieldName: String, descriptor: String): String =
+            "$classFqn#$fieldName:$descriptor"
+
+        /**
+         * Builds the precise rename key for a method. Mirrors how Vineflower /
+         * the JVM identify methods; the descriptor disambiguates overloads.
+         */
+        fun methodKey(classFqn: String, methodName: String, descriptor: String): String =
+            "$classFqn#$methodName$descriptor"
 
         private val DEFAULT_JSON = Json { prettyPrint = true; ignoreUnknownKeys = true }
         private val MAP_SERIALIZER = MapSerializer(String.serializer(), String.serializer())
