@@ -48,4 +48,44 @@ class AgentRuntimeFilterTest {
         assertFalse(AgentRuntimeFilter.isAgentRuntime("io.grpcfoo.Bar"))
         assertFalse(AgentRuntimeFilter.isAgentRuntime("org.slf4jstore.Baz"))
     }
+
+    @Test
+    fun `flags org_jcp JDK internal namespace`() {
+        assertTrue(AgentRuntimeFilter.isAgentRuntime("org.jcp.xml.dsig.internal.dom.DOMReference"))
+    }
+
+    @Test
+    fun `flags lambda classes - legacy naming JDK 8 to 15`() {
+        assertTrue(AgentRuntimeFilter.isRuntimeGenerated("com.example.MyApp\$\$Lambda\$0"))
+        assertTrue(AgentRuntimeFilter.isRuntimeGenerated("com.example.MyApp\$\$Lambda\$42"))
+    }
+
+    @Test
+    fun `flags lambda classes - hidden-class naming JDK 16 plus`() {
+        assertTrue(AgentRuntimeFilter.isRuntimeGenerated("com.example.MyApp\$\$Lambda/0x0000000800c00800"))
+    }
+
+    @Test
+    fun `flags lambda classes nested inside inner classes`() {
+        assertTrue(AgentRuntimeFilter.isRuntimeGenerated("com.example.Outer\$Inner\$\$Lambda\$5"))
+    }
+
+    @Test
+    fun `does not flag anonymous inner classes`() {
+        // Real on-disk bytecode, NOT synthesized lambdas.
+        assertFalse(AgentRuntimeFilter.isRuntimeGenerated("com.example.MyApp\$1"))
+        assertFalse(AgentRuntimeFilter.isRuntimeGenerated("com.example.Outer\$Inner"))
+    }
+
+    @Test
+    fun `shouldHide combines both predicates`() {
+        // Agent runtime
+        assertTrue(AgentRuntimeFilter.shouldHide("com.bugdigger.agent.Foo"))
+        assertTrue(AgentRuntimeFilter.shouldHide("io.grpc.Channel"))
+        // Runtime-generated
+        assertTrue(AgentRuntimeFilter.shouldHide("com.example.MyApp\$\$Lambda\$0"))
+        // Target classes pass through
+        assertFalse(AgentRuntimeFilter.shouldHide("com.example.MyApp"))
+        assertFalse(AgentRuntimeFilter.shouldHide("com.example.MyApp\$Inner"))
+    }
 }

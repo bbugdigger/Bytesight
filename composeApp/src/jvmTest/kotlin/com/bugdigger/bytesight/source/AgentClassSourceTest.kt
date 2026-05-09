@@ -95,6 +95,29 @@ class AgentClassSourceTest {
 
             assertEquals(listOf("com.example.MyApp"), result)
         }
+
+        @Test
+        fun `filters out JVM-synthesized lambda classes`() = runTest {
+            // Lambda classes have no on-disk bytecode and `getClassBytecode`
+            // would always fail for them — see AgentRuntimeFilter docs.
+            val target = ClassInfo.newBuilder().setName("com.example.MyApp").build()
+            val lambdaLegacy = ClassInfo.newBuilder()
+                .setName("com.example.MyApp\$\$Lambda\$0")
+                .build()
+            val lambdaHidden = ClassInfo.newBuilder()
+                .setName("com.example.MyApp\$\$Lambda/0x0000000800c00800")
+                .build()
+            val jdkInternal = ClassInfo.newBuilder()
+                .setName("org.jcp.xml.dsig.internal.dom.DOMReference")
+                .build()
+            coEvery {
+                agentClient.listClasses(any(), any(), any())
+            } returns Result.success(listOf(target, lambdaLegacy, lambdaHidden, jdkInternal))
+
+            val result = source.listClasses().getOrThrow().map { it.name }
+
+            assertEquals(listOf("com.example.MyApp"), result)
+        }
     }
 
     @Nested
