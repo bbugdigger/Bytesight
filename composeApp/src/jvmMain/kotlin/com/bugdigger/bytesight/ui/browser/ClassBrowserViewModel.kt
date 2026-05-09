@@ -30,6 +30,12 @@ data class ClassBrowserUiState(
     val decompilationWarnings: List<String> = emptyList(),
     /** Decompiled source with user renames applied (display layer). */
     val displayDecompiled: String? = null,
+    /**
+     * Active rename map (FQN → user-assigned name). Forwarded from
+     * [RenameStore] so the screen can render renamed class names without
+     * touching the store directly.
+     */
+    val renames: Map<String, String> = emptyMap(),
     val error: String? = null,
 )
 
@@ -50,11 +56,16 @@ class ClassBrowserViewModel(
     private var activeSource: ClassSource? = null
 
     init {
-        // Re-apply renames whenever the rename map changes
+        // Re-apply renames whenever the rename map changes. Both the
+        // decompiled-source overlay AND the renamed list display depend
+        // on this — re-filter so the search box matches against the new
+        // display names too.
         viewModelScope.launch {
-            renameStore.renameMap.collect { _ ->
+            renameStore.renameMap.collect { renameMap ->
                 _uiState.update { state ->
                     state.copy(
+                        renames = renameMap,
+                        filteredClasses = filterClasses(state.classes, state.searchQuery, renameMap),
                         displayDecompiled = state.decompiled?.let { renameStore.applyToSource(it) },
                     )
                 }
@@ -95,7 +106,7 @@ class ClassBrowserViewModel(
                     _uiState.update {
                         it.copy(
                             classes = classes,
-                            filteredClasses = filterClasses(classes, it.searchQuery),
+                            filteredClasses = filterClasses(classes, it.searchQuery, it.renames),
                             isLoading = false,
                         )
                     }
@@ -118,7 +129,7 @@ class ClassBrowserViewModel(
         _uiState.update {
             it.copy(
                 searchQuery = query,
-                filteredClasses = filterClasses(it.classes, query),
+                filteredClasses = filterClasses(it.classes, query, it.renames),
             )
         }
     }
@@ -221,12 +232,24 @@ class ClassBrowserViewModel(
         _uiState.update { it.copy(error = null) }
     }
 
-    private fun filterClasses(classes: List<ClassInfo>, query: String): List<ClassInfo> {
+    /**
+     * Filter the class list against the search query. Matches against the
+     * original FQN AND the user-assigned display name (if any), so renaming
+     * `o.j` to `Product` lets the user search for "Product" and find the
+     * class.
+     */
+    private fun filterClasses(
+        classes: List<ClassInfo>,
+        query: String,
+        renames: Map<String, String>,
+    ): List<ClassInfo> {
         if (query.isBlank()) return classes
 
         val lowerQuery = query.lowercase()
         return classes.filter { classInfo ->
-            classInfo.name.lowercase().contains(lowerQuery)
+            if (classInfo.name.lowercase().contains(lowerQuery)) return@filter true
+            val display = renames[classInfo.name] ?: return@filter false
+            display.lowercase().contains(lowerQuery)
         }
     }
 }

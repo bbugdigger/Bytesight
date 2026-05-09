@@ -27,7 +27,10 @@ data class HierarchyUiState(
     val expandedNodes: Set<String> = emptySet(),
     val isLoading: Boolean = false,
     val error: String? = null,
-    /** Short-name → new-name map for display-layer renaming. */
+    /**
+     * FQN → user-assigned-name map. The screen looks up display short names
+     * with [RenameStore.displayShortName] for each rendered class.
+     */
     val renames: Map<String, String> = emptyMap(),
 )
 
@@ -48,8 +51,20 @@ class HierarchyViewModel(
 
     init {
         viewModelScope.launch {
-            renameStore.renameMap.collect { _ ->
-                _uiState.update { it.copy(renames = renameStore.shortNameMap()) }
+            renameStore.renameMap.collect { renameMap ->
+                _uiState.update { state ->
+                    state.copy(
+                        renames = renameMap,
+                        // Re-filter so search matches against renamed display
+                        // names too (rename `o.j` to "Product", typing
+                        // "Product" should still find it in the tree).
+                        filteredRoots = HierarchyBuilder.filterTree(
+                            applyVisibilityFilter(state.allRoots, state),
+                            state.searchQuery,
+                            renameMap,
+                        ),
+                    )
+                }
             }
         }
         viewModelScope.launch {
@@ -93,7 +108,7 @@ class HierarchyViewModel(
                     _uiState.update {
                         it.copy(
                             allRoots = roots,
-                            filteredRoots = HierarchyBuilder.filterTree(filtered, it.searchQuery),
+                            filteredRoots = HierarchyBuilder.filterTree(filtered, it.searchQuery, it.renames),
                             isLoading = false,
                         )
                     }
@@ -137,7 +152,7 @@ class HierarchyViewModel(
             val filtered = applyVisibilityFilter(it.allRoots, it.copy(searchQuery = query))
             it.copy(
                 searchQuery = query,
-                filteredRoots = HierarchyBuilder.filterTree(filtered, query),
+                filteredRoots = HierarchyBuilder.filterTree(filtered, query, it.renames),
             )
         }
     }
@@ -149,7 +164,7 @@ class HierarchyViewModel(
         _uiState.update {
             val newState = it.copy(showInterfaces = show)
             val filtered = applyVisibilityFilter(it.allRoots, newState)
-            newState.copy(filteredRoots = HierarchyBuilder.filterTree(filtered, it.searchQuery))
+            newState.copy(filteredRoots = HierarchyBuilder.filterTree(filtered, it.searchQuery, newState.renames))
         }
     }
 
@@ -160,7 +175,7 @@ class HierarchyViewModel(
         _uiState.update {
             val newState = it.copy(showClasses = show)
             val filtered = applyVisibilityFilter(it.allRoots, newState)
-            newState.copy(filteredRoots = HierarchyBuilder.filterTree(filtered, it.searchQuery))
+            newState.copy(filteredRoots = HierarchyBuilder.filterTree(filtered, it.searchQuery, newState.renames))
         }
     }
 

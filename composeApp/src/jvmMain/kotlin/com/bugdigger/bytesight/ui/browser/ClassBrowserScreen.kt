@@ -73,6 +73,7 @@ fun ClassBrowserScreen(
                 classes = uiState.filteredClasses,
                 selectedClass = uiState.selectedClass,
                 isLoading = uiState.isLoading,
+                renames = uiState.renames,
                 onSelect = viewModel::selectClass,
                 modifier = Modifier.width(400.dp),
             )
@@ -82,6 +83,7 @@ fun ClassBrowserScreen(
                 selectedClass = uiState.selectedClass,
                 decompiled = uiState.decompiled,
                 isLoading = uiState.isLoadingBytecode,
+                renames = uiState.renames,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -182,6 +184,7 @@ private fun ClassList(
     classes: List<ClassInfo>,
     selectedClass: ClassInfo?,
     isLoading: Boolean,
+    renames: Map<String, String>,
     onSelect: (ClassInfo?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -225,6 +228,7 @@ private fun ClassList(
                         ClassListItem(
                             classInfo = classInfo,
                             isSelected = classInfo == selectedClass,
+                            renames = renames,
                             onClick = { onSelect(if (classInfo == selectedClass) null else classInfo) },
                         )
                     }
@@ -238,6 +242,7 @@ private fun ClassList(
 private fun ClassListItem(
     classInfo: ClassInfo,
     isSelected: Boolean,
+    renames: Map<String, String>,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -255,8 +260,11 @@ private fun ClassListItem(
         Column(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
-            // Simple class name
-            val simpleName = classInfo.name.substringAfterLast('.')
+            // Display name uses the user's rename if one exists, falling back
+            // to the class's natural simple name. FQN-keyed lookup, so two
+            // classes with the same simple name don't bleed into each other.
+            val simpleName = com.bugdigger.bytesight.service.RenameStore
+                .displayShortName(classInfo.name, renames)
             val packageName = classInfo.name.substringBeforeLast('.', "")
 
             Text(
@@ -293,6 +301,7 @@ private fun CodePanel(
     selectedClass: ClassInfo?,
     decompiled: String?,
     isLoading: Boolean,
+    renames: Map<String, String>,
     modifier: Modifier = Modifier,
 ) {
     val clipboardManager = LocalClipboardManager.current
@@ -308,8 +317,11 @@ private fun CodePanel(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                val titleText = selectedClass?.let {
+                    com.bugdigger.bytesight.service.RenameStore.displayClassFqn(it.name, renames)
+                } ?: "Select a class"
                 Text(
-                    text = selectedClass?.name ?: "Select a class",
+                    text = titleText,
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

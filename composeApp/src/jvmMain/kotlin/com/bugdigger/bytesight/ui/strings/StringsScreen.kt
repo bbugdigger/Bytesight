@@ -92,6 +92,7 @@ fun StringsScreen(
         // Constants table
         ConstantsTable(
             constants = uiState.filteredConstants,
+            renames = uiState.renames,
             modifier = Modifier.weight(1f),
         )
     }
@@ -208,6 +209,7 @@ private fun SearchAndFilters(
 @Composable
 private fun ConstantsTable(
     constants: List<ExtractedConstant>,
+    renames: Map<String, String>,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -247,7 +249,7 @@ private fun ConstantsTable(
                 // Table rows
                 LazyColumn {
                     itemsIndexed(constants, key = { index, constant -> "$index.${constant.className}.${constant.methodName}" }) { _, constant ->
-                        ConstantRow(constant)
+                        ConstantRow(constant, renames)
                         HorizontalDivider(
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
                         )
@@ -261,6 +263,7 @@ private fun ConstantsTable(
 @Composable
 private fun ConstantRow(
     constant: ExtractedConstant,
+    renames: Map<String, String>,
     modifier: Modifier = Modifier,
 ) {
     val patternColor = when {
@@ -308,9 +311,22 @@ private fun ConstantRow(
             overflow = TextOverflow.Ellipsis,
         )
 
-        // Location
+        // Location — substitute renames for the class portion and, if a
+        // method rename exists, for the method portion. The `location`
+        // field is constructed by ConstantExtractor as `"${className}.${name}()"`.
+        val displayClass = com.bugdigger.bytesight.service.RenameStore
+            .displayClassFqn(constant.className, renames)
+        val methodKey = constant.methodName?.let { "${constant.className}#$it" }
+        val displayMethod = methodKey?.let {
+            com.bugdigger.bytesight.service.RenameStore.displayShortName(it, renames)
+        }
+        val displayLocation = if (displayMethod != null) {
+            "$displayClass.$displayMethod()"
+        } else {
+            displayClass
+        }
         Text(
-            text = constant.location,
+            text = displayLocation,
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.weight(1.5f),
             color = MaterialTheme.colorScheme.onSurfaceVariant,

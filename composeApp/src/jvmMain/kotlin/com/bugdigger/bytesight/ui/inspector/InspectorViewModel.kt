@@ -50,7 +50,13 @@ data class InspectorUiState(
      * to set line breakpoints that resolve to a real bytecode location.
      */
     val decompiledLineMap: com.bugdigger.core.decompiler.DecompiledLineMap? = null,
+    /** Short-name → new-name map for highlighting renamed identifiers in the decompiled source. */
     val renamedSymbols: Map<String, String> = emptyMap(),
+    /**
+     * FQN → user-assigned-name. Used by the class dropdown so the user
+     * sees their renamed classes there instead of `o.j` etc.
+     */
+    val classRenames: Map<String, String> = emptyMap(),
     val viewMode: ViewMode = ViewMode.LINEAR,
     val cfg: ControlFlowGraph? = null,
     val graphLayout: GraphLayout<BasicBlock, CfgEdge>? = null,
@@ -96,7 +102,7 @@ class InspectorViewModel(
 
         // Mirror rename store into uiState and re-apply renames to decompiled source.
         viewModelScope.launch {
-            renameStore.renameMap.collect { _ ->
+            renameStore.renameMap.collect { renameMap ->
                 val current = _innerState.value
                 val shortNames = renameStore.shortNameMap()
                 val displaySource = current.decompiledSource?.let { renameStore.applyToSource(it) }
@@ -104,6 +110,7 @@ class InspectorViewModel(
                     it.copy(
                         displaySource = displaySource,
                         renamedSymbols = shortNames,
+                        classRenames = renameMap,
                     )
                 }
             }

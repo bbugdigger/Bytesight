@@ -89,6 +89,7 @@ fun HierarchyScreen(
                 expandedNodes = uiState.expandedNodes,
                 selectedClass = uiState.selectedClass,
                 isLoading = uiState.isLoading,
+                renames = uiState.renames,
                 onToggleExpand = viewModel::toggleExpanded,
                 onSelectClass = viewModel::selectClass,
                 modifier = Modifier.weight(1f),
@@ -99,6 +100,7 @@ fun HierarchyScreen(
                 selectedClass = uiState.selectedClass,
                 classInfo = uiState.selectedClassInfo,
                 ancestors = uiState.selectedAncestors,
+                renames = uiState.renames,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -148,6 +150,7 @@ private fun HierarchyTree(
     expandedNodes: Set<String>,
     selectedClass: String?,
     isLoading: Boolean,
+    renames: Map<String, String>,
     onToggleExpand: (String) -> Unit,
     onSelectClass: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -195,6 +198,7 @@ private fun HierarchyTree(
                             depth = depth,
                             isExpanded = node.className in expandedNodes,
                             isSelected = node.className == selectedClass,
+                            renames = renames,
                             onToggleExpand = { onToggleExpand(node.className) },
                             onSelect = { onSelectClass(node.className) },
                         )
@@ -211,6 +215,7 @@ private fun TreeNodeRow(
     depth: Int,
     isExpanded: Boolean,
     isSelected: Boolean,
+    renames: Map<String, String>,
     onToggleExpand: () -> Unit,
     onSelect: () -> Unit,
     modifier: Modifier = Modifier,
@@ -255,8 +260,9 @@ private fun TreeNodeRow(
             // Type icon
             Text(text = icon, modifier = Modifier.padding(end = 4.dp))
 
-            // Class name
-            val simpleName = node.className.substringAfterLast('.')
+            // Class name — substitute the user's rename if one exists.
+            val simpleName = com.bugdigger.bytesight.service.RenameStore
+                .displayShortName(node.className, renames)
             val packageName = node.className.substringBeforeLast('.', "")
 
             Column {
@@ -304,6 +310,7 @@ private fun ClassDetailPanel(
     selectedClass: String?,
     classInfo: com.bugdigger.protocol.ClassInfo?,
     ancestors: List<String>,
+    renames: Map<String, String>,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -321,13 +328,17 @@ private fun ClassDetailPanel(
                     )
                 }
             } else {
+                val displayShort = com.bugdigger.bytesight.service.RenameStore
+                    .displayShortName(selectedClass, renames)
+                val displayFqn = com.bugdigger.bytesight.service.RenameStore
+                    .displayClassFqn(selectedClass, renames)
                 Text(
-                    text = selectedClass.substringAfterLast('.'),
+                    text = displayShort,
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = selectedClass,
+                    text = displayFqn,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -339,14 +350,16 @@ private fun ClassDetailPanel(
                     Text("Inheritance Chain", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
                     Spacer(modifier = Modifier.height(4.dp))
                     for ((i, ancestor) in ancestors.reversed().withIndex()) {
+                        val ancestorShort = com.bugdigger.bytesight.service.RenameStore
+                            .displayShortName(ancestor, renames)
                         Text(
-                            text = "${"  ".repeat(i)}↳ ${ancestor.substringAfterLast('.')}",
+                            text = "${"  ".repeat(i)}↳ $ancestorShort",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     Text(
-                        text = "${"  ".repeat(ancestors.size)}↳ ${selectedClass.substringAfterLast('.')}",
+                        text = "${"  ".repeat(ancestors.size)}↳ $displayShort",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -361,8 +374,10 @@ private fun ClassDetailPanel(
                         Text("Implements", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
                         Spacer(modifier = Modifier.height(4.dp))
                         for (iface in classInfo.interfacesList) {
+                            val ifaceShort = com.bugdigger.bytesight.service.RenameStore
+                                .displayShortName(iface, renames)
                             Text(
-                                text = "  🔷 ${iface.substringAfterLast('.')}",
+                                text = "  🔷 $ifaceShort",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
@@ -370,14 +385,17 @@ private fun ClassDetailPanel(
                         Spacer(modifier = Modifier.height(16.dp))
                     }
 
-                    // Methods
+                    // Methods — apply the user's per-method renames if any.
                     if (classInfo.methodsList.isNotEmpty()) {
                         Text("Methods (${classInfo.methodsList.size})", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
                         Spacer(modifier = Modifier.height(4.dp))
                         LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
                             items(classInfo.methodsList) { method ->
+                                val methodKey = "$selectedClass#${method.name}${method.signature}"
+                                val displayMethodName = com.bugdigger.bytesight.service.RenameStore
+                                    .displayShortName(methodKey, renames)
                                 Text(
-                                    text = "  ${method.name}${method.signature}",
+                                    text = "  $displayMethodName${method.signature}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurface,
                                     maxLines = 1,

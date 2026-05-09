@@ -25,6 +25,7 @@ fun SelectorRow(
     onSelectMethod: (String, String) -> Unit,
     isLoading: Boolean,
     onDropdownExpandedChange: (Boolean) -> Unit = {},
+    classRenames: Map<String, String> = emptyMap(),
     modifier: Modifier = Modifier,
 ) {
     var classExpanded by remember { mutableStateOf(false) }
@@ -35,8 +36,11 @@ fun SelectorRow(
         onDropdownExpandedChange(classExpanded || methodExpanded)
     }
 
-    LaunchedEffect(selectedClassName) {
-        classSearchText = selectedClassName ?: ""
+    LaunchedEffect(selectedClassName, classRenames) {
+        // Show the user's chosen rename in the field, falling back to the FQN.
+        classSearchText = selectedClassName?.let {
+            com.bugdigger.bytesight.service.RenameStore.displayClassFqn(it, classRenames)
+        } ?: ""
     }
 
     Row(
@@ -66,12 +70,18 @@ fun SelectorRow(
                     .menuAnchor(MenuAnchorType.PrimaryEditable),
             )
 
-            val filteredClasses = remember(classSearchText, classes) {
-                if (classSearchText.isBlank() || classSearchText == selectedClassName) {
+            val filteredClasses = remember(classSearchText, classes, classRenames) {
+                val displayedSelection = selectedClassName?.let {
+                    com.bugdigger.bytesight.service.RenameStore.displayClassFqn(it, classRenames)
+                }
+                if (classSearchText.isBlank() || classSearchText == displayedSelection) {
                     classes.take(100)
                 } else {
-                    classes.filter {
-                        it.name.lowercase().contains(classSearchText.lowercase())
+                    val q = classSearchText.lowercase()
+                    classes.filter { info ->
+                        if (info.name.lowercase().contains(q)) return@filter true
+                        // Also match against the user's renamed display name.
+                        classRenames[info.name]?.lowercase()?.contains(q) == true
                     }.take(100)
                 }
             }
@@ -80,8 +90,11 @@ fun SelectorRow(
                 expanded = classExpanded,
                 onDismissRequest = {
                     classExpanded = false
-                    if (classSearchText != selectedClassName) {
-                        classSearchText = selectedClassName ?: ""
+                    val displayed = selectedClassName?.let {
+                        com.bugdigger.bytesight.service.RenameStore.displayClassFqn(it, classRenames)
+                    } ?: ""
+                    if (classSearchText != displayed) {
+                        classSearchText = displayed
                     }
                 },
                 modifier = Modifier.heightIn(max = 300.dp),
@@ -99,11 +112,13 @@ fun SelectorRow(
                     )
                 } else {
                     filteredClasses.forEach { classInfo ->
+                        val displaySimple = com.bugdigger.bytesight.service.RenameStore
+                            .displayShortName(classInfo.name, classRenames)
                         DropdownMenuItem(
                             text = {
                                 Column {
                                     Text(
-                                        text = classInfo.name.substringAfterLast('.'),
+                                        text = displaySimple,
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurface,
                                     )
@@ -115,7 +130,11 @@ fun SelectorRow(
                                 }
                             },
                             onClick = {
-                                classSearchText = classInfo.name
+                                // Field shows the renamed FQN, but we still
+                                // dispatch the original FQN to the VM — the
+                                // data model is unchanged.
+                                classSearchText = com.bugdigger.bytesight.service.RenameStore
+                                    .displayClassFqn(classInfo.name, classRenames)
                                 onSelectClass(classInfo.name)
                                 classExpanded = false
                             },

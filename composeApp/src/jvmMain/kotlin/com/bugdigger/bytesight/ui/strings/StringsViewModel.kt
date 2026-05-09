@@ -29,7 +29,10 @@ data class StringsUiState(
     val totalClasses: Int = 0,
     val processedClasses: Int = 0,
     val error: String? = null,
-    /** Short-name → new-name map for display-layer renaming. */
+    /**
+     * FQN → user-assigned-name. The screen looks up display short names
+     * with [RenameStore.displayShortName] when rendering location strings.
+     */
     val renames: Map<String, String> = emptyMap(),
 )
 
@@ -51,8 +54,8 @@ class StringsViewModel(
 
     init {
         viewModelScope.launch {
-            renameStore.renameMap.collect { _ ->
-                _uiState.update { it.copy(renames = renameStore.shortNameMap()) }
+            renameStore.renameMap.collect { renameMap ->
+                _uiState.update { it.copy(renames = renameMap) }
             }
         }
         viewModelScope.launch {

@@ -110,16 +110,28 @@ object HierarchyBuilder {
 
     /**
      * Filters the tree to only show branches containing the search query.
+     * Matches against both the original FQN AND the user-assigned display
+     * name (if any), so renaming `o.j` to `Product` lets the user search
+     * for "Product" and still find that branch.
      */
-    fun filterTree(roots: List<HierarchyNode>, query: String): List<HierarchyNode> {
+    fun filterTree(
+        roots: List<HierarchyNode>,
+        query: String,
+        renames: Map<String, String> = emptyMap(),
+    ): List<HierarchyNode> {
         if (query.isBlank()) return roots
         val lowerQuery = query.lowercase()
-        return roots.mapNotNull { filterNode(it, lowerQuery) }
+        return roots.mapNotNull { filterNode(it, lowerQuery, renames) }
     }
 
-    private fun filterNode(node: HierarchyNode, query: String): HierarchyNode? {
-        val matchesSelf = node.className.lowercase().contains(query)
-        val filteredChildren = node.children.mapNotNull { filterNode(it, query) }
+    private fun filterNode(
+        node: HierarchyNode,
+        query: String,
+        renames: Map<String, String>,
+    ): HierarchyNode? {
+        val matchesSelf = node.className.lowercase().contains(query) ||
+            (renames[node.className]?.lowercase()?.contains(query) == true)
+        val filteredChildren = node.children.mapNotNull { filterNode(it, query, renames) }
 
         return if (matchesSelf || filteredChildren.isNotEmpty()) {
             node.copy(children = filteredChildren.toMutableList())

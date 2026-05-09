@@ -101,6 +101,49 @@ class RenameStoreTest {
     }
 
     @Nested
+    @DisplayName("Display Name Helpers")
+    inner class DisplayNameHelpers {
+
+        @Test
+        fun `displayShortName returns rename when present`() {
+            val renames = mapOf("o.j" to "Product")
+            assertEquals("Product", RenameStore.displayShortName("o.j", renames))
+        }
+
+        @Test
+        fun `displayShortName falls back to shortName when no rename`() {
+            assertEquals("j", RenameStore.displayShortName("o.j", emptyMap()))
+            assertEquals("MyClass", RenameStore.displayShortName("com.example.MyClass", emptyMap()))
+        }
+
+        @Test
+        fun `displayShortName is FQN-keyed, not short-name-keyed`() {
+            // Two classes with the same simple name; only one renamed.
+            // The lookup must not bleed over.
+            val renames = mapOf("a.X" to "Foo")
+            assertEquals("Foo", RenameStore.displayShortName("a.X", renames))
+            assertEquals("X", RenameStore.displayShortName("b.X", renames))
+        }
+
+        @Test
+        fun `displayClassFqn preserves package and substitutes simple name`() {
+            val renames = mapOf("o.j" to "Product")
+            assertEquals("o.Product", RenameStore.displayClassFqn("o.j", renames))
+        }
+
+        @Test
+        fun `displayClassFqn handles classes with no package`() {
+            val renames = mapOf("Top" to "Renamed")
+            assertEquals("Renamed", RenameStore.displayClassFqn("Top", renames))
+        }
+
+        @Test
+        fun `displayClassFqn returns original FQN when no rename`() {
+            assertEquals("com.example.Foo", RenameStore.displayClassFqn("com.example.Foo", emptyMap()))
+        }
+    }
+
+    @Nested
     @DisplayName("Apply to Source")
     inner class ApplyToSource {
 

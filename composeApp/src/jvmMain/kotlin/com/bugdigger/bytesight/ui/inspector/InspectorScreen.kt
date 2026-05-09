@@ -185,6 +185,7 @@ fun InspectorScreen(
                     onSelectMethod = viewModel::selectMethod,
                     isLoading = uiState.isLoading || uiState.isLoadingClasses,
                     onDropdownExpandedChange = { dropdownOpen = it },
+                    classRenames = uiState.classRenames,
                 )
             }
 

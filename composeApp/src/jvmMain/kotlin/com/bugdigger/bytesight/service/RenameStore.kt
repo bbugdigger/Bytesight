@@ -103,6 +103,27 @@ class RenameStore {
             return name.substringAfterLast('.')
         }
 
+        /**
+         * Display short name for a class/method/field key. If the user has a
+         * rename for [fqn] in [renames], returns it; otherwise returns the
+         * natural [shortName]. FQN-keyed lookup, so two classes with the
+         * same simple name (`a.X` vs `b.X`) don't collide.
+         */
+        fun displayShortName(fqn: String, renames: Map<String, String>): String =
+            renames[fqn] ?: shortName(fqn)
+
+        /**
+         * Display fully-qualified class name. Package portion is preserved;
+         * the simple name is replaced with the user's rename if present.
+         * Pass class FQNs only — behavior with `#methodName` keys is
+         * undefined.
+         */
+        fun displayClassFqn(classFqn: String, renames: Map<String, String>): String {
+            val pkg = classFqn.substringBeforeLast('.', missingDelimiterValue = "")
+            val simple = displayShortName(classFqn, renames)
+            return if (pkg.isEmpty()) simple else "$pkg.$simple"
+        }
+
         private val DEFAULT_JSON = Json { prettyPrint = true; ignoreUnknownKeys = true }
         private val MAP_SERIALIZER = MapSerializer(String.serializer(), String.serializer())
     }
