@@ -76,6 +76,25 @@ class AgentClassSourceTest {
 
             assertTrue(result.isFailure)
         }
+
+        @Test
+        fun `filters out Bytesight agent runtime classes`() = runTest {
+            val target = ClassInfo.newBuilder().setName("com.example.MyApp").build()
+            val ourAgent = ClassInfo.newBuilder().setName("com.bugdigger.agent.BytesightAgent").build()
+            val grpc = ClassInfo.newBuilder().setName("io.grpc.MethodDescriptor").build()
+            val shadedNetty = ClassInfo.newBuilder()
+                .setName("io.grpc.netty.shaded.io.netty.channel.Channel")
+                .build()
+            val slf4j = ClassInfo.newBuilder().setName("org.slf4j.Logger").build()
+            val protocol = ClassInfo.newBuilder().setName("com.bugdigger.protocol.ClassInfo").build()
+            coEvery {
+                agentClient.listClasses(any(), any(), any())
+            } returns Result.success(listOf(target, ourAgent, grpc, shadedNetty, slf4j, protocol))
+
+            val result = source.listClasses().getOrThrow().map { it.name }
+
+            assertEquals(listOf("com.example.MyApp"), result)
+        }
     }
 
     @Nested

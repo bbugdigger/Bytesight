@@ -23,11 +23,18 @@ class AgentClassSource(
     override val displayName: String = "JVM @ $connectionKey"
 
     override suspend fun listClasses(includeSystemClasses: Boolean): Result<List<ClassInfo>> {
+        // Filter out the Bytesight agent's own runtime classes (gRPC, bytebuddy,
+        // ASM, protobuf, slf4j, logback, our own agent + protocol stubs) — they
+        // get loaded into the target JVM the moment we attach, and the user
+        // doesn't want to see them in Classes / Hierarchy / Inspector / Strings.
+        // See [AgentRuntimeFilter] for the prefix list and rationale.
         return agentClient.listClasses(
             connectionKey = connectionKey,
             packageFilter = "",
             includeSystemClasses = includeSystemClasses,
-        )
+        ).map { classes ->
+            classes.filterNot { AgentRuntimeFilter.isAgentRuntime(it.name) }
+        }
     }
 
     override suspend fun getBytecode(className: String): Result<ByteArray> {
