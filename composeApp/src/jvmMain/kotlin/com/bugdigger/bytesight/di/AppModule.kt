@@ -16,6 +16,7 @@ import com.bugdigger.bytesight.service.ProjectService
 import com.bugdigger.bytesight.service.ProjectSession
 import com.bugdigger.bytesight.service.RenameAwareDecompiler
 import com.bugdigger.bytesight.service.RenameStore
+import com.bugdigger.bytesight.service.XrefService
 import com.bugdigger.bytesight.ui.ai.AIViewModel
 import com.bugdigger.bytesight.ui.attach.AttachViewModel
 import com.bugdigger.bytesight.ui.browser.ClassBrowserViewModel
@@ -76,6 +77,10 @@ val appModule = module {
     // ApkClassSource and BtsProjectClassSource will reuse these singletons.
     single { JarReader() }
     single { StaticHierarchyExtractor() }
+
+    // Cross-references (xrefs). Indexes the active source on demand;
+    // observes ConnectionRegistry for invalidation.
+    single { XrefService(connectionRegistry = get()) }
 
     // Project file persistence (.bts save/load).
     single { Json { prettyPrint = true; ignoreUnknownKeys = true } }

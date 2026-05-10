@@ -10,9 +10,14 @@ class FakeClassSource(
     override val displayName: String = "fake",
     private val listFailure: Throwable? = null,
     private val bytecodeFailure: Throwable? = null,
+    /** Probe callback fired on every successful call to [listClasses]. */
+    private val onListClasses: (() -> Unit)? = null,
 ) : ClassSource {
-    override suspend fun listClasses(includeSystemClasses: Boolean): Result<List<ClassInfo>> =
-        listFailure?.let { Result.failure(it) } ?: Result.success(classes)
+    override suspend fun listClasses(includeSystemClasses: Boolean): Result<List<ClassInfo>> {
+        listFailure?.let { return Result.failure(it) }
+        onListClasses?.invoke()
+        return Result.success(classes)
+    }
 
     override suspend fun getBytecode(className: String): Result<ByteArray> =
         bytecodeFailure?.let { Result.failure(it) }

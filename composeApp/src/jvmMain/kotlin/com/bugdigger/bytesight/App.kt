@@ -224,6 +224,11 @@ private fun MainContent(
                 pendingMethodSignature = navState.pendingInspectorMethodSignature,
                 onPendingClassConsumed = onClearPendingInspectorClass,
                 onAskAI = onAskAI,
+                // Used by the xref popup: clicking a row navigates the
+                // Inspector to the caller's class+method via the same
+                // pendingInspectorClass/Method machinery used by Heap +
+                // Debugger.
+                onNavigateToInspector = onNavigateToInspector,
                 modifier = modifier,
             )
         }

@@ -51,6 +51,7 @@ fun InspectorScreen(
     pendingMethodSignature: String? = null,
     onPendingClassConsumed: () -> Unit = {},
     onAskAI: ((String) -> Unit)? = null,
+    onNavigateToInspector: ((className: String, methodName: String?, methodSignature: String?) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -128,6 +129,13 @@ fun InspectorScreen(
                 when (event.key) {
                     Key.Tab -> {
                         viewModel.toggleViewMode()
+                        true
+                    }
+                    Key.X -> {
+                        // IDA-style xrefs: callers of selectedMethod + users
+                        // of selectedClass. The dialog handles the building
+                        // progress + result population.
+                        viewModel.requestXrefs()
                         true
                     }
                     Key.Slash -> {
@@ -331,6 +339,19 @@ fun InspectorScreen(
             pending = pending,
             onPick = viewModel::resolveRenameAs,
             onDismiss = viewModel::cancelPendingRename,
+        )
+    }
+
+    // Show the IDA-style xrefs popup when X was pressed.
+    uiState.xrefDialog?.let { dialogState ->
+        com.bugdigger.bytesight.ui.components.XrefDialog(
+            state = dialogState,
+            onPickSite = { site ->
+                onNavigateToInspector?.let { nav ->
+                    viewModel.navigateToXrefSite(site, nav)
+                } ?: viewModel.dismissXrefs()
+            },
+            onDismiss = viewModel::dismissXrefs,
         )
     }
 }

@@ -7,6 +7,9 @@ import com.bugdigger.bytesight.service.ConnectionRegistry
 import com.bugdigger.bytesight.service.MethodComments
 import com.bugdigger.bytesight.service.MethodKey
 import com.bugdigger.bytesight.service.RenameStore
+import com.bugdigger.bytesight.service.XrefService
+import com.bugdigger.bytesight.ui.components.XrefDialogState
+import com.bugdigger.core.analysis.XrefSite
 import com.bugdigger.bytesight.source.ClassSource
 import com.bugdigger.bytesight.ui.components.GraphLayout
 import com.bugdigger.bytesight.ui.components.SugiyamaLayout
@@ -96,6 +99,13 @@ data class InspectorUiState(
      * when non-null.
      */
     val pendingRename: PendingRename? = null,
+    /**
+     * Set when the user pressed X — the screen renders
+     * [com.bugdigger.bytesight.ui.components.XrefDialog]. Cleared on dismiss
+     * and on every X press (we rebuild from the current selectedClass +
+     * selectedMethod).
+     */
+    val xrefDialog: XrefDialogState? = null,
     val viewMode: ViewMode = ViewMode.LINEAR,
     val cfg: ControlFlowGraph? = null,
     val graphLayout: GraphLayout<BasicBlock, CfgEdge>? = null,
@@ -112,6 +122,7 @@ class InspectorViewModel(
     private val decompiler: Decompiler,
     private val commentStore: CommentStore,
     private val renameStore: RenameStore,
+    private val xrefService: XrefService,
 ) : ViewModel() {
 
     private val _innerState = MutableStateFlow(InspectorUiState())
@@ -519,6 +530,92 @@ class InspectorViewModel(
     fun clearError() {
         _innerState.update { it.copy(error = null) }
     }
+
+    // ============== Cross-references (xrefs) ==============
+
+    /**
+     * Open the xref popup for the currently-selected method and class.
+     * Builds the index lazily on first call (subsequent calls hit the
+     * cache); shows a progress indicator while building.
+     *
+     * Triggered by the X key in InspectorScreen.
+     */
+    fun requestXrefs() {
+        val state = _innerState.value
+        val className = state.selectedClassName ?: return
+        val method = state.selectedMethod
+        val renames = renameStore.renameMap.value
+
+        // Build the title up-front using the user's renames so the dialog
+        // header reads naturally (e.g. "Cross-references for o.Product.foo").
+        val classDisplay = RenameStore.displayClassFqn(className, renames)
+        val targetLabel = if (method != null) {
+            val methodDisplay = RenameStore.displayShortName(
+                RenameStore.methodKey(className, method.name, method.descriptor),
+                renames,
+            )
+            "$classDisplay.$methodDisplay${method.descriptor}"
+        } else {
+            classDisplay
+        }
+
+        // Open the dialog immediately in Building state; populate when ready.
+        _innerState.update {
+            it.copy(
+                xrefDialog = XrefDialogState(
+                    targetLabel = targetLabel,
+                    buildStatus = xrefService.buildStatus.value,
+                    renames = renames,
+                ),
+            )
+        }
+
+        viewModelScope.launch {
+            val callers = if (method != null) {
+                xrefService.findCallersOf(
+                    RenameStore.methodKey(className, method.name, method.descriptor),
+                )
+            } else emptyList()
+            val users = xrefService.findUsersOf(className)
+
+            // Don't overwrite if the user dismissed the dialog while we were
+            // building.
+            val current = _innerState.value.xrefDialog ?: return@launch
+            _innerState.update {
+                it.copy(
+                    xrefDialog = current.copy(
+                        callers = callers,
+                        classUsers = users,
+                        buildStatus = xrefService.buildStatus.value,
+                    ),
+                )
+            }
+        }
+    }
+
+    /** User dismissed the xref popup. */
+    fun dismissXrefs() {
+        _innerState.update { it.copy(xrefDialog = null) }
+    }
+
+    /**
+     * User clicked an xref row. Navigate the Inspector to that class+method
+     * via the same `pendingInspectorClass` / `pendingInspectorMethod`
+     * mechanism used for cross-tab navigation. The Screen forwards this
+     * call to its `onNavigateToInspector` callback, which updates
+     * NavigationState; the Screen's existing `LaunchedEffect` then waits
+     * for classes to load and selects the right one.
+     */
+    fun navigateToXrefSite(site: XrefSite, navigateInspector: (String, String?, String?) -> Unit) {
+        navigateInspector(
+            site.callerClassFqn,
+            site.callerMethodName.ifEmpty { null },
+            site.callerMethodDescriptor.ifEmpty { null },
+        )
+        dismissXrefs()
+    }
+
+    // ============== End xrefs ==============
 
     private fun currentMethodKey(state: InspectorUiState): MethodKey? {
         val className = state.selectedClassName ?: return null

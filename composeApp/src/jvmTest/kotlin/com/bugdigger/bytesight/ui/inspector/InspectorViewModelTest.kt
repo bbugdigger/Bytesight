@@ -36,7 +36,10 @@ class InspectorViewModelTest {
         mockDecompiler = mockk(relaxed = true)
         commentStore = CommentStore()
         renameStore = RenameStore()
-        viewModel = InspectorViewModel(connectionRegistry, mockDecompiler, commentStore, renameStore)
+        val xrefService = com.bugdigger.bytesight.service.XrefService(connectionRegistry)
+        viewModel = InspectorViewModel(
+            connectionRegistry, mockDecompiler, commentStore, renameStore, xrefService,
+        )
     }
 
     @Nested
