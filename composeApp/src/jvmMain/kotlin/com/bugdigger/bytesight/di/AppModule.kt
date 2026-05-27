@@ -99,7 +99,7 @@ val appModule = module {
     }
 
     // AI agent services (wires BytesightAgentServices to real services)
-    single<BytesightAgentServices> { BytesightAgentServicesImpl(get(), get(), get(), get()) }
+    single<BytesightAgentServices> { BytesightAgentServicesImpl(get(), get(), get(), get(), get()) }
     single { get<BytesightAgentServices>() as BytesightAgentServicesImpl }
 
     // ViewModels

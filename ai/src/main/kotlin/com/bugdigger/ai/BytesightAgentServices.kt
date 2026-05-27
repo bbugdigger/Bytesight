@@ -60,6 +60,21 @@ interface BytesightAgentServices {
     suspend fun decompileMultiple(classNames: List<String>): Map<String, String>
 
     /**
+     * Find static cross-references for a class and, optionally, one of its methods.
+     *
+     * @param className target class FQN, e.g. `com.example.Foo`
+     * @param methodName optional target method name. Blank means class users only.
+     * @param methodDescriptor optional JVM descriptor for overload disambiguation.
+     * @param limit maximum rows per section
+     */
+    suspend fun findCrossReferences(
+        className: String,
+        methodName: String = "",
+        methodDescriptor: String = "",
+        limit: Int = 50,
+    ): CrossReferenceResult
+
+    /**
      * Heap histogram: instance count and total bytes per class, optionally filtered by name.
      * Returns empty if no heap snapshot is captured yet.
      */
@@ -105,6 +120,22 @@ data class TraceSummary(
     val durationNanos: Long? = null,
     val arguments: String? = null,
     val returnValue: String? = null,
+)
+
+data class CrossReferenceResult(
+    val targetClassName: String,
+    val targetMethodName: String? = null,
+    val targetMethodDescriptor: String? = null,
+    val callers: List<CrossReferenceSite> = emptyList(),
+    val classUsers: List<CrossReferenceSite> = emptyList(),
+)
+
+data class CrossReferenceSite(
+    val callerClassName: String,
+    val callerMethodName: String,
+    val callerMethodDescriptor: String,
+    val instructionOffset: Int,
+    val category: String,
 )
 
 data class HeapHistogramRow(

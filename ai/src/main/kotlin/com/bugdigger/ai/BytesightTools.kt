@@ -232,6 +232,56 @@ class BytesightTools(private val services: BytesightAgentServices) : ToolSet {
     }
 
     @Tool
+    @LLMDescription(
+        "Find static cross-references. With only className, returns every place the " +
+            "class is referenced as a type, constructed, cast, or used. With methodName " +
+            "and methodDescriptor, also returns every call site for that exact method. " +
+            "Use get_class_info first to get descriptors when overloads are possible."
+    )
+    suspend fun findCrossReferences(
+        @LLMDescription("Target class FQN, e.g. com.example.Foo.")
+        className: String,
+        @LLMDescription("Optional target method name, e.g. run. Empty means class references only.")
+        methodName: String = "",
+        @LLMDescription("Optional JVM method descriptor, e.g. (Ljava/lang/String;)V. Use for overloads.")
+        methodDescriptor: String = "",
+        @LLMDescription("Maximum rows per section. Default 50.")
+        limit: Int = 50,
+    ): String {
+        if (!services.isConnected()) return NOT_CONNECTED
+        if (className.isBlank()) return "className must not be blank."
+
+        val refs = services.findCrossReferences(
+            className = className.trim(),
+            methodName = methodName.trim(),
+            methodDescriptor = methodDescriptor.trim(),
+            limit = limit.coerceAtLeast(1),
+        )
+        val hasMethodTarget = refs.targetMethodName != null
+        if (refs.callers.isEmpty() && refs.classUsers.isEmpty()) {
+            return "No cross-references found for ${refs.targetLabel()}."
+        }
+
+        return buildString {
+            appendLine("Cross-references for ${refs.targetLabel()}:")
+            if (hasMethodTarget) {
+                appendLine("Callers (${refs.callers.size}):")
+                if (refs.callers.isEmpty()) {
+                    appendLine("- none")
+                } else {
+                    refs.callers.forEach { site -> appendLine("- ${site.format()}") }
+                }
+            }
+            appendLine("Class users (${refs.classUsers.size}):")
+            if (refs.classUsers.isEmpty()) {
+                appendLine("- none")
+            } else {
+                refs.classUsers.forEach { site -> appendLine("- ${site.format()}") }
+            }
+        }
+    }
+
+    @Tool
     @LLMDescription("List all renames the user (or you) have applied so far.")
     suspend fun getRenames(): String {
         val renames = services.getRenames()
@@ -269,4 +319,20 @@ class BytesightTools(private val services: BytesightAgentServices) : ToolSet {
         internal const val NOT_CONNECTED =
             "No target JVM is attached. Ask the user to attach to a process first."
     }
+}
+
+private fun CrossReferenceResult.targetLabel(): String {
+    val method = targetMethodName ?: return targetClassName
+    val descriptor = targetMethodDescriptor.orEmpty()
+    return "$targetClassName#$method$descriptor"
+}
+
+private fun CrossReferenceSite.format(): String {
+    val method = if (callerMethodName.isBlank()) {
+        "<class>"
+    } else {
+        "$callerMethodName$callerMethodDescriptor"
+    }
+    val offset = if (instructionOffset >= 0) " @${instructionOffset}" else ""
+    return "$callerClassName#$method$offset [$category]"
 }

@@ -68,6 +68,7 @@ The Bytesight AI agent (powered by JetBrains [Koog](https://github.com/JetBrains
 | `list_classes` | List loaded classes in the target, with substring filtering. |
 | `decompile_class` | Decompile one class to Java-like source (renames already applied). |
 | `decompile_classes` | Decompile up to several classes at once for cross-reference analysis. |
+| `find_cross_references` | Find callers of a method and every place a class is referenced. |
 | `get_class_info` | Structural shape of a class — super, interfaces, methods, fields. Cheaper than decompiling. |
 | `search_strings` | Find string constants across all loaded classes (great for crypto keys, URLs, SQL, log messages). |
 | `get_recent_traces` | Read the most recent method-trace events captured by the active hooks. |

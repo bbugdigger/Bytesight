@@ -51,6 +51,12 @@ class BytesightToolsTest {
             val result = tools.getRecentTraces()
             assertEquals(BytesightTools.NOT_CONNECTED, result)
         }
+
+        @Test
+        fun `findCrossReferences returns NOT_CONNECTED message`() = runTest {
+            val result = tools.findCrossReferences("com.example.Foo")
+            assertEquals(BytesightTools.NOT_CONNECTED, result)
+        }
     }
 
     @Nested
@@ -213,6 +219,61 @@ class BytesightToolsTest {
             val result = tools.getRenames()
 
             assertEquals("No renames yet.", result)
+        }
+    }
+
+    @Nested
+    @DisplayName("findCrossReferences")
+    inner class FindCrossReferencesTool {
+
+        @Test
+        fun `formats callers and class users`() = runTest {
+            coEvery {
+                services.findCrossReferences("com.example.Auth", "login", "(Ljava/lang/String;)Z", any())
+            } returns CrossReferenceResult(
+                targetClassName = "com.example.Auth",
+                targetMethodName = "login",
+                targetMethodDescriptor = "(Ljava/lang/String;)Z",
+                callers = listOf(
+                    CrossReferenceSite(
+                        callerClassName = "com.example.Controller",
+                        callerMethodName = "handle",
+                        callerMethodDescriptor = "()V",
+                        instructionOffset = 12,
+                        category = "INVOKE_VIRTUAL",
+                    ),
+                ),
+                classUsers = listOf(
+                    CrossReferenceSite(
+                        callerClassName = "com.example.App",
+                        callerMethodName = "start",
+                        callerMethodDescriptor = "()V",
+                        instructionOffset = 4,
+                        category = "NEW",
+                    ),
+                ),
+            )
+
+            val result = tools.findCrossReferences(
+                className = "com.example.Auth",
+                methodName = "login",
+                methodDescriptor = "(Ljava/lang/String;)Z",
+            )
+
+            assertTrue(result.contains("com.example.Auth#login(Ljava/lang/String;)Z"))
+            assertTrue(result.contains("com.example.Controller#handle()V @12 [INVOKE_VIRTUAL]"))
+            assertTrue(result.contains("com.example.App#start()V @4 [NEW]"))
+        }
+
+        @Test
+        fun `reports no cross references`() = runTest {
+            coEvery { services.findCrossReferences(any(), any(), any(), any()) } returns CrossReferenceResult(
+                targetClassName = "com.example.Unused",
+            )
+
+            val result = tools.findCrossReferences("com.example.Unused")
+
+            assertEquals("No cross-references found for com.example.Unused.", result)
         }
     }
 

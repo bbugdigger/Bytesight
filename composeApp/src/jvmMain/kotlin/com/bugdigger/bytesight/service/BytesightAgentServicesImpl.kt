@@ -3,11 +3,14 @@ package com.bugdigger.bytesight.service
 import com.bugdigger.ai.BytesightAgentServices
 import com.bugdigger.ai.ClassDetail
 import com.bugdigger.ai.ClassSummary
+import com.bugdigger.ai.CrossReferenceResult
+import com.bugdigger.ai.CrossReferenceSite
 import com.bugdigger.ai.FieldSummary
 import com.bugdigger.ai.HeapHistogramRow
 import com.bugdigger.ai.MethodSummary
 import com.bugdigger.ai.StringMatch
 import com.bugdigger.ai.TraceSummary
+import com.bugdigger.core.analysis.XrefSite
 import com.bugdigger.core.analysis.ConstantExtractor
 import com.bugdigger.core.analysis.ConstantType
 import com.bugdigger.core.decompiler.DecompilationResult
@@ -29,6 +32,7 @@ class BytesightAgentServicesImpl(
     private val decompiler: Decompiler,
     private val renameStore: RenameStore,
     private val connectionRegistry: ConnectionRegistry,
+    private val xrefService: XrefService,
 ) : BytesightAgentServices {
 
     private val logger = LoggerFactory.getLogger(BytesightAgentServicesImpl::class.java)
@@ -165,6 +169,37 @@ class BytesightAgentServicesImpl(
         return result
     }
 
+    override suspend fun findCrossReferences(
+        className: String,
+        methodName: String,
+        methodDescriptor: String,
+        limit: Int,
+    ): CrossReferenceResult {
+        val targetClass = className.trim()
+        if (targetClass.isBlank()) return CrossReferenceResult(targetClassName = targetClass)
+
+        val perSectionLimit = limit.coerceAtLeast(1)
+        val callers = if (methodName.isBlank()) {
+            emptyList()
+        } else {
+            findCallers(targetClass, methodName.trim(), methodDescriptor.trim())
+                .distinct()
+                .take(perSectionLimit)
+                .map { it.toAiSite() }
+        }
+        val classUsers = xrefService.findUsersOf(targetClass)
+            .take(perSectionLimit)
+            .map { it.toAiSite() }
+
+        return CrossReferenceResult(
+            targetClassName = targetClass,
+            targetMethodName = methodName.trim().ifBlank { null },
+            targetMethodDescriptor = methodDescriptor.trim().ifBlank { null },
+            callers = callers,
+            classUsers = classUsers,
+        )
+    }
+
     override suspend fun getHeapHistogram(nameFilter: String, limit: Int): List<HeapHistogramRow> {
         val key = connectionRegistry.connectionKey.value ?: return emptyList()
         val snapshotId = connectionRegistry.snapshotId.value ?: return emptyList()
@@ -187,5 +222,36 @@ class BytesightAgentServicesImpl(
         name = name,
         isInterface = isInterface,
         isAbstract = Modifier.isAbstract(modifiers),
+    )
+
+    private suspend fun findCallers(
+        className: String,
+        methodName: String,
+        methodDescriptor: String,
+    ): List<XrefSite> {
+        if (methodDescriptor.isNotBlank()) {
+            return xrefService.findCallersOf("$className#$methodName$methodDescriptor")
+        }
+
+        val descriptors = getClassInfo(className)
+            ?.methods
+            ?.asSequence()
+            ?.filter { it.name == methodName }
+            ?.map { it.descriptor }
+            ?.distinct()
+            ?.toList()
+            .orEmpty()
+
+        return descriptors.flatMap { descriptor ->
+            xrefService.findCallersOf("$className#$methodName$descriptor")
+        }
+    }
+
+    private fun XrefSite.toAiSite() = CrossReferenceSite(
+        callerClassName = callerClassFqn,
+        callerMethodName = callerMethodName,
+        callerMethodDescriptor = callerMethodDescriptor,
+        instructionOffset = instructionOffset,
+        category = category.name,
     )
 }
